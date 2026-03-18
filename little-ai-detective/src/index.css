@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+/* 小小 AI 物体侦探 - 卡通风格主题：大字体、圆角、明亮色（蓝绿黄） */
+:root {
+  --color-primary: #22c3a6;
+  --color-secondary: #3b82f6;
+  --color-accent: #fbbf24;
+  --color-bg: #f0fdf9;
+  --font-size-title: clamp(1.75rem, 5vw, 2.5rem);
+  --font-size-body: clamp(1rem, 2.5vw, 1.25rem);
+  --radius: 1.25rem;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Comic Sans MS", "Microsoft YaHei", "PingFang SC", "SimHei", sans-serif;
+  background: linear-gradient(135deg, #e0f7f4 0%, #dbeafe 50%, #fef9c3 100%);
+  color: #1e3a5f;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* 按钮与卡片圆角、阴影 */
+.rounded-cartoon {
+  border-radius: var(--radius);
+  box-shadow: 0 4px 14px rgba(34, 195, 166, 0.25);
+}
+
+/* 载入动画 */
+@keyframes bounce-soft {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.animate-bounce-soft {
+  animation: bounce-soft 1s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34, 195, 166, 0.4); }
+  50% { opacity: 0.9; box-shadow: 0 0 20px 4px rgba(34, 195, 166, 0.3); }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
