@@ -157,13 +157,18 @@ function resampleTo44100(input, fromRate) {
   return out
 }
 
-/** 与训练脚本一致：从 PCM 提取 128 维特征（上传文件用） */
+/** 与训练脚本一致：从 PCM 提取 128 维特征（上传文件用）
+ * 返回格式：{ feature: number[], spectrum: number[][] }
+ * feature: 归一化后的特征向量（用于识别）
+ * spectrum: 12帧的原始频谱数据（每帧128维，用于可视化）
+ */
 function extractBirdFeaturesFromPcm(samples441) {
   const need = FFT_SIZE + (FRAMES_AUDIO - 1) * HOP_SAMPLES
   if (samples441.length < need) return null
   const maxStart = samples441.length - need
   const start = Math.floor(maxStart / 2)
   const accum = new Array(FEATURE_LEN).fill(0)
+  const spectrumFrames = [] // 存储每一帧的频谱数据
   const clampLo = -100
   const clampHi = 0
   for (let f = 0; f < FRAMES_AUDIO; f++) {
@@ -173,16 +178,23 @@ function extractBirdFeaturesFromPcm(samples441) {
       win[i] = samples441[off + i] * hammingWin(i, FFT_SIZE)
     }
     const mags = rfftMag128(win)
+    const frameSpectrum = new Array(FEATURE_LEN)
     for (let i = 0; i < FEATURE_LEN; i++) {
       let v = 20 * Math.log10(Math.max(mags[i], 1e-12))
       if (!Number.isFinite(v)) v = clampLo
       if (v < clampLo) v = clampLo
       if (v > clampHi) v = clampHi
-      accum[i] += (v - clampLo) / (clampHi - clampLo)
+      const normalized = (v - clampLo) / (clampHi - clampLo)
+      frameSpectrum[i] = normalized
+      accum[i] += normalized
     }
+    spectrumFrames.push(frameSpectrum)
   }
   for (let i = 0; i < FEATURE_LEN; i++) accum[i] /= FRAMES_AUDIO
-  return l2NormalizeFeature(accum)
+  return {
+    feature: l2NormalizeFeature(accum),
+    spectrum: spectrumFrames,
+  }
 }
 function base64ToArrayBuffer(base64) {
   const binary = atob(base64)
@@ -248,6 +260,8 @@ export default function WikiDecoder() {
   const [showSampleAudioPicker, setShowSampleAudioPicker] = useState(false)
   /** 当前播放的示例音频 URL（用于预览） */
   const [playingSampleAudio, setPlayingSampleAudio] = useState(null)
+  /** 音频频谱数据（12帧 × 128维），用于可视化 */
+  const [audioSpectrum, setAudioSpectrum] = useState(null)
 
   const videoRef = useRef(null)
   const streamRef = useRef(null)
@@ -553,6 +567,7 @@ export default function WikiDecoder() {
     }
     setAudioError('')
     setAudioRecording(true)
+    setAudioSpectrum(null) // 清除旧的频谱数据
     try {
       let stream = audioStreamRef.current
       if (!stream) {
@@ -574,13 +589,17 @@ export default function WikiDecoder() {
       const binCount = analyser.frequencyBinCount
       const inputSize = Math.min(binCount, FEATURE_LEN)
       const frames = []
+      const spectrumFrames = [] // 保存原始频谱数据用于可视化
       const data = new Float32Array(binCount)
       await new Promise((resolve) => {
         let elapsed = 0
         const tick = () => {
           analyser.getFloatFrequencyData(data)
           const len = Math.min(binCount, inputSize)
-          frames.push(sanitizeAndNormalizeFFT(data, len))
+          const normalized = sanitizeAndNormalizeFFT(data, len)
+          frames.push(normalized)
+          // 保存原始归一化后的频谱数据（用于可视化）
+          spectrumFrames.push([...normalized])
           elapsed += recordIntervalMs
           if (elapsed < recordDurationMs) setTimeout(tick, recordIntervalMs)
           else resolve()
@@ -588,6 +607,12 @@ export default function WikiDecoder() {
         setTimeout(tick, recordIntervalMs)
       })
       if (frames.length === 0) throw new Error('未采集到音频')
+      // 保存频谱数据用于可视化（取前12帧，如果不足则补零）
+      const spectrumToShow = spectrumFrames.slice(0, FRAMES_AUDIO)
+      while (spectrumToShow.length < FRAMES_AUDIO) {
+        spectrumToShow.push(new Array(FEATURE_LEN).fill(0))
+      }
+      setAudioSpectrum(spectrumToShow)
       const dim = frames[0].length
       const avg = new Array(dim).fill(0)
       for (const f of frames) {
@@ -600,6 +625,7 @@ export default function WikiDecoder() {
       setAudioError(err?.message || '录制或识别失败')
       setPredictions([])
       setRagText('')
+      setAudioSpectrum(null) // 清除频谱数据
     } finally {
       setAudioRecording(false)
     }
@@ -613,6 +639,7 @@ export default function WikiDecoder() {
       }
       setAudioError('')
       setAudioUploading(true)
+      setAudioSpectrum(null) // 清除旧的频谱数据
       try {
         const n = audioBuffer.length
         const ch = audioBuffer.numberOfChannels
@@ -624,22 +651,26 @@ export default function WikiDecoder() {
         }
         const s441 = resampleTo44100(mono, audioBuffer.sampleRate)
         const need = FFT_SIZE + (FRAMES_AUDIO - 1) * HOP_SAMPLES
-        let feat = extractBirdFeaturesFromPcm(s441)
-        if (!feat && s441.length > 0) {
+        let result = extractBirdFeaturesFromPcm(s441)
+        if (!result && s441.length > 0) {
           const padded = new Float32Array(Math.max(need, s441.length))
           padded.set(s441.length <= padded.length ? s441 : s441.slice(0, padded.length))
-          feat = extractBirdFeaturesFromPcm(padded)
+          result = extractBirdFeaturesFromPcm(padded)
         }
-        if (!feat) {
+        if (!result) {
           throw new Error(
             `音频有效长度不足（建议 ≥ ${Math.ceil(need / TARGET_SR)} 秒），请换较长片段或录制识别`,
           )
         }
-        applyBirdPrediction(feat)
+        // 保存频谱数据用于可视化
+        setAudioSpectrum(result.spectrum)
+        // 使用归一化特征进行识别
+        applyBirdPrediction(result.feature)
       } catch (err) {
         setAudioError(err?.message || '无法解码或识别该音频（支持常见 mp3/wav/ogg/m4a 等）')
         setPredictions([])
         setRagText('')
+        setAudioSpectrum(null) // 清除频谱数据
       } finally {
         setAudioUploading(false)
       }
@@ -673,6 +704,7 @@ export default function WikiDecoder() {
         setAudioError('请先加载音频模型')
         return
       }
+      setAudioSpectrum(null) // 清除旧的频谱数据
       const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
       const audioUrl = `${base}/samples/built-in-bird-calls/${sample.category}/${sample.filename}`
       try {
@@ -688,10 +720,81 @@ export default function WikiDecoder() {
         setAudioError(err?.message || '加载示例音频失败')
         setPredictions([])
         setRagText('')
+        setAudioSpectrum(null) // 清除频谱数据
       }
     },
     [audioModel, audioClassNames, recognizeAudio],
   )
+
+  /** 频谱图 Canvas 引用 */
+  const spectrogramCanvasRef = useRef(null)
+
+  /** 绘制频谱图到 Canvas */
+  const drawSpectrogram = useCallback((spectrum, canvas) => {
+    if (!spectrum || !spectrum.length || !canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const width = canvas.width
+    const height = canvas.height
+    const numFrames = spectrum.length
+    const numBins = spectrum[0]?.length || FEATURE_LEN
+
+    // 清除画布
+    ctx.fillStyle = '#000000'
+    ctx.fillRect(0, 0, width, height)
+
+    // 计算每个像素对应的帧和频率bin
+    const frameWidth = width / numFrames
+    const binHeight = height / numBins
+
+    // 绘制频谱图
+    for (let f = 0; f < numFrames; f++) {
+      const frame = spectrum[f]
+      if (!frame) continue
+      for (let b = 0; b < numBins; b++) {
+        const value = frame[b] || 0
+        // 颜色映射：从深色到亮绿色/青色
+        // value 范围是 0-1（归一化后的对数幅度）
+        const hue = 180 // 青色
+        const saturation = 100
+        const lightness = 10 + value * 50 // 10-60% 亮度
+        ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`
+        const x = f * frameWidth
+        const y = height - (b + 1) * binHeight // 翻转Y轴，低频在底部
+        ctx.fillRect(x, y, Math.ceil(frameWidth), Math.ceil(binHeight))
+      }
+    }
+
+    // 绘制坐标轴和标签（可选）
+    ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)'
+    ctx.lineWidth = 1
+    // Y轴（频率）
+    ctx.beginPath()
+    ctx.moveTo(0, 0)
+    ctx.lineTo(0, height)
+    ctx.stroke()
+    // X轴（时间）
+    ctx.beginPath()
+    ctx.moveTo(0, height)
+    ctx.lineTo(width, height)
+    ctx.stroke()
+  }, [])
+
+  // 当频谱数据变化时，重新绘制
+  useEffect(() => {
+    if (audioSpectrum && spectrogramCanvasRef.current) {
+      const canvas = spectrogramCanvasRef.current
+      // 设置Canvas尺寸（如果需要调整）
+      const displayWidth = canvas.offsetWidth || 600
+      const displayHeight = 256
+      if (canvas.width !== displayWidth || canvas.height !== displayHeight) {
+        canvas.width = displayWidth
+        canvas.height = displayHeight
+      }
+      drawSpectrogram(audioSpectrum, canvas)
+    }
+  }, [audioSpectrum, drawSpectrogram])
 
   const recognizeImage = useCallback(
     async (dataUrl) => {
@@ -1225,6 +1328,27 @@ export default function WikiDecoder() {
             <div className="h-2 bg-[var(--lab-panel)] rounded-full overflow-hidden">
               <div className="h-full w-1/3 rounded-full bg-[var(--lab-cyan)] animate-recognize-progress" />
             </div>
+          </div>
+        )}
+
+        {/* 步骤 3：音频频谱图与识别结果 */}
+        {modelType === 'audio' && audioSpectrum && (
+          <div className="rounded-lg bg-[var(--lab-bg)] p-4 tech-border mb-4">
+            <p className="text-[var(--lab-cyan)] font-bold mb-2 flex items-center gap-2">
+              <span>📊</span> 音频频谱图
+            </p>
+            <div className="rounded border-2 border-[var(--lab-cyan)]/30 bg-black overflow-hidden">
+              <canvas
+                ref={spectrogramCanvasRef}
+                width={600}
+                height={256}
+                className="w-full h-auto max-h-64 block"
+                style={{ imageRendering: 'auto' }}
+              />
+            </div>
+            <p className="text-gray-500 text-xs mt-2">
+              X轴：时间（{audioSpectrum.length}帧，每帧约0.1秒，总计约{((audioSpectrum.length * 0.1).toFixed(1))}秒） | Y轴：频率（0-22050Hz，128个频率bin，低频在底部）
+            </p>
           </div>
         )}
 
