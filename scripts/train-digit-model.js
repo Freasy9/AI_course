@@ -17,8 +17,8 @@ const OUTPUT_FILE = path.join(MODELS_DIR, 'digit-model.json')
 const IMAGES_URL = 'https://storage.googleapis.com/cvdf-datasets/mnist/train-images-idx3-ubyte.gz'
 const LABELS_URL = 'https://storage.googleapis.com/cvdf-datasets/mnist/train-labels-idx1-ubyte.gz'
 
-/** 每类样本数：Node 纯 CPU 跑 MobileNet 很慢，宜小；需更高精度可改为 80～200 并耐心等待 */
-const MAX_PER_CLASS = 48
+/** 每类样本数：提高准确率建议 150-200，但训练时间更长（约 30-60 分钟） */
+const MAX_PER_CLASS = 150
 /** 批量推理，显著快于逐张 */
 const INFER_BATCH = 8
 
@@ -88,9 +88,21 @@ async function main() {
       const expanded = []
       for (const im of chunk) {
         const { pixels, rows, cols } = im
+        // 改进预处理：先 padding 到 32x32（保持比例），再 resize 到 224x224，减少失真
         const t = tf.default.tensor3d(pixels, [rows, cols, 1])
-        const resized = tf.default.image.resizeBilinear(t, [224, 224])
-        const rgb = tf.default.concat([resized, resized, resized], 2)
+        const padSize = 2
+        const padded = tf.default.pad(t, [
+          [padSize, padSize],
+          [padSize, padSize],
+          [0, 0],
+        ])
+        const resized = tf.default.image.resizeBilinear(padded, [224, 224])
+        // 增强对比度：将 0-1 范围映射到更宽范围，然后归一化
+        const enhanced = resized.mul(1.2).clipByValue(0, 1)
+        const rgb = tf.default.concat([enhanced, enhanced, enhanced], 2)
+        t.dispose()
+        padded.dispose()
+        resized.dispose()
         expanded.push(rgb.expandDims(0))
       }
       const batched = tf.default.concat(expanded, 0)
@@ -131,9 +143,10 @@ async function main() {
     loss: 'categoricalCrossentropy',
   })
   await headModel.fit(xs, ys, {
-    epochs: 18,
+    epochs: 40,
     batchSize: 32,
     verbose: 0,
+    validationSplit: 0.15, // 15% 用于验证，监控过拟合
   })
   xs.dispose()
   ys.dispose()
