@@ -62,6 +62,26 @@ ssh -T git@github.com   # 首次会问是否信任，输入 yes
 git push -u origin main
 ```
 
+### 若出现 `403` / `Permission denied to Freasy9`
+
+1. **Token 权限不够**  
+   - Classic：必须勾选 **`repo`**（整组）。  
+   - Fine-grained：必须选仓库 **`AI_course`**，且 **Contents → Read and write**。
+
+2. **用户名和 Token 不是同一账号**  
+   `Username` 必须与生成 Token 的 GitHub 账号一致；不要用别人的 Token 配你的用户名。
+
+3. **本机记住了错误/old 密码**（最常见）  
+   先清掉再推送：
+
+   ```bash
+   printf 'host=github.com\nprotocol=https\n\n' | git credential-osxkeychain erase
+   ```
+
+   然后再 `git push -u origin main`，重新输入 **Username + 新 Token**。
+
+4. **改用 SSH**（见上文「用 SSH 推送」），可绕过 HTTPS 缓存问题。
+
 ## 三、开启 GitHub Pages
 
 1. 打开 [仓库 Settings → Pages](https://github.com/Freasy9/AI_course/settings/pages)
