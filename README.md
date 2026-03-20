@@ -18,6 +18,14 @@ npm run dev
 
 在浏览器中打开终端提示的本地地址（如 `http://localhost:5173`）即可。
 
+## GitHub 与在线访问
+
+- 仓库：<https://github.com/Freasy9/AI_course>
+- 推送：`git remote add origin https://github.com/Freasy9/AI_course.git`（若已添加可省略）→ `git push -u origin main`
+- 开启 **Settings → Pages → Source: GitHub Actions** 后，站点一般为：<https://freasy9.github.io/AI_course/>
+
+详细步骤见根目录 **[GITHUB_DEPLOY.md](./GITHUB_DEPLOY.md)**。
+
 ## 技术栈
 
 - React 19 + Vite 7

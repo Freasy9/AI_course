@@ -1,10 +1,11 @@
-# 推送到 main 后自动构建并发布到 GitHub Pages
+# 推送到 main 或手动运行时：构建并发布到 GitHub Pages
 # 仓库 Settings → Pages → Source 选「GitHub Actions」
 name: Deploy GitHub Pages
 
 on:
   push:
     branches: [main]
+  workflow_dispatch: {}
 
 permissions:
   contents: read
@@ -25,7 +26,7 @@ jobs:
           node-version: '20'
           cache: npm
       - run: npm ci
-      # 项目站地址为 https://用户名.github.io/仓库名/ ，需设置 base
+      # 在线地址：https://freasy9.github.io/AI_course/  → base 必须为 /AI_course/
       - name: Build
         run: npm run build -- --base=/${{ github.event.repository.name }}/
       - uses: actions/upload-pages-artifact@v3

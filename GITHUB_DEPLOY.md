@@ -1,36 +1,46 @@
-# 发布到 GitHub（代码 + 网站）
+# GitHub 配置说明（本仓库：Freasy9/AI_course）
 
-## 一、把代码推到 GitHub
+## 当前远程仓库
 
-1. 打开 [github.com/new](https://github.com/new) 新建仓库（例如名称为 `AI_game`），**不要**勾选 “Add a README”。
-2. 在本项目目录执行（把 `你的用户名` 和 `仓库名` 换成自己的）：
+| 项 | 值 |
+|----|-----|
+| 仓库 | [github.com/Freasy9/AI_course](https://github.com/Freasy9/AI_course) |
+| 默认分支 | `main` |
+| 在线站点（Pages 成功后） | **https://freasy9.github.io/AI_course/** |
+
+## 一、绑定远程（若尚未配置）
 
 ```bash
 cd /Users/hailong/Desktop/AI_course/AI_game
-git remote add origin https://github.com/你的用户名/仓库名.git
+git remote remove origin 2>/dev/null
+git remote add origin https://github.com/Freasy9/AI_course.git
 git branch -M main
+git remote -v
+```
+
+## 二、推送代码
+
+```bash
 git push -u origin main
 ```
 
-若提示登录，可用 GitHub 网页生成的 **Personal Access Token** 代替密码，或安装 [GitHub CLI](https://cli.github.com/) 执行 `gh auth login`。
+若提示登录：使用 **Personal Access Token** 作为密码，或配置 [SSH 密钥](https://docs.github.com/en/authentication/connecting-to-github-with-ssh) 后改用：
 
-## 二、开启 GitHub Pages（别人用浏览器访问）
+```bash
+git remote set-url origin git@github.com:Freasy9/AI_course.git
+git push -u origin main
+```
 
-1. 打开仓库 **Settings → Pages**。
-2. **Build and deployment** 里 **Source** 选 **GitHub Actions**（不要选 Deploy from branch）。
-3. 再随便改点东西推送到 `main`，或到 **Actions** 里手动重新运行 **Deploy GitHub Pages**。
-4. 成功后网站地址为：
+## 三、开启 GitHub Pages
 
-   **`https://你的用户名.github.io/仓库名/`**
+1. 打开 [仓库 Settings → Pages](https://github.com/Freasy9/AI_course/settings/pages)
+2. **Build and deployment** → **Source** 选择 **GitHub Actions**（不要选 “Deploy from a branch”）
+3. 推送 `main` 后，到 **Actions** 查看 **Deploy GitHub Pages** 是否成功；也可在 Actions 里点 **Run workflow** 手动再跑一遍
 
-例如仓库叫 `AI_game`，用户名为 `zhang`，则：<https://zhang.github.io/AI_game/>
+## 四、构建说明
 
-> 若仓库名是 **`用户名.github.io`**（专门做主页的仓库），网站根路径是 `https://用户名.github.io/`，需把构建命令里的 `base` 改成 `/`，并相应改 workflow 里的 build 步骤（可发 issue 或改 Agent 帮你改）。
+CI 使用 `npm run build -- --base=/AI_course/`，与 Pages 子路径一致。本地开发仍用默认根路径，无需改 `vite.config.js`。
 
-## 三、摄像头 / HTTPS
+## 五、密钥
 
-GitHub Pages 默认是 **HTTPS**，手机和其他电脑一般可直接用摄像头（需用户授权）。
-
-## 四、本地含密钥时不要提交
-
-`.env` 已在 `.gitignore` 中；不要把 `VITE_XAI_API_KEY` 等写进仓库。
+勿将 `.env` 中的 API Key 提交仓库；`.env` 已在 `.gitignore` 中。
