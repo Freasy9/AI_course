@@ -26,7 +26,8 @@ dist-ssr
 *.sln
 *.sw?
 
-# 内置模型训练用鸟叫（本地下载，体积大）
-public/samples/built-in-bird-calls/**/*.mp3
-public/samples/built-in-bird-calls/**/*.wav
-public/samples/built-in-bird-calls/**/*.ogg
+# 内置模型训练用鸟叫：为支持在线访问示例音频，每个类别至少提交一个文件
+# 若需完整训练集，运行 npm run download-bird-calls（会下载更多文件，但 .gitignore 已排除）
+# public/samples/built-in-bird-calls/**/*.mp3
+# public/samples/built-in-bird-calls/**/*.wav
+# public/samples/built-in-bird-calls/**/*.ogg
