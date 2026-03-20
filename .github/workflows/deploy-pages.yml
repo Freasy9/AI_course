@@ -29,9 +29,17 @@ jobs:
       # @teachablemachine/image 要求 tfjs@1.3.1，但项目用 tfjs@4.22.0；本地可能用 --legacy-peer-deps 安装
       - run: npm ci --legacy-peer-deps
       # 在线地址：https://freasy9.github.io/AI_course/  → base 必须为 /AI_course/
+      # 魔法咒语工坊 API：在仓库 Settings → Secrets and variables → Actions 添加：
+      #   VITE_XAI_API_KEY（xAI API 密钥，用于文本/图片生成）
+      #   或 VITE_MAGIC_SPELL_API_BASE（自建后端地址，如 https://api.example.com）
       - name: Build
         env:
           NODE_OPTIONS: --max-old-space-size=6144
+          # 从 GitHub Secrets 读取环境变量，Vite 会在构建时注入到代码中
+          VITE_XAI_API_KEY: ${{ secrets.VITE_XAI_API_KEY }}
+          VITE_XAI_BASE_URL: ${{ secrets.VITE_XAI_BASE_URL }}
+          VITE_MAGIC_SPELL_PROVIDER: ${{ secrets.VITE_MAGIC_SPELL_PROVIDER }}
+          VITE_MAGIC_SPELL_API_BASE: ${{ secrets.VITE_MAGIC_SPELL_API_BASE }}
         run: npm run build -- --base=/${{ github.event.repository.name }}/
       - uses: actions/upload-pages-artifact@v3
         with:
