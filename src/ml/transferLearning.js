@@ -140,12 +140,20 @@ export async function trainHead(samplesByClass, classNames, onProgress) {
 
 /**
  * 对单张图片（dataURL）做预测
+ * @param {string} imageSrc - 图片的 dataURL
+ * @param {HeadModelWeights} headWeights - 分类头权重
+ * @returns {Promise<{ predictions: Array<{ className: string, probability: number }>, embedding: number[] }>}
+ *   返回预测结果和特征向量（embedding）
  */
 export async function predict(imageSrc, headWeights) {
   const net = await loadMobileNet()
   const img = await loadImageAsElement(imageSrc)
   const emb = net.infer(img, true)
   const embedding = emb.reshape([1, -1])
+
+  // 提取特征向量数据
+  const embeddingData = await emb.data()
+  const embeddingArray = Array.from(embeddingData)
 
   const logits = tf.tensor2d(headWeights.weights)
   const bias = tf.tensor1d(headWeights.biases)
@@ -162,7 +170,7 @@ export async function predict(imageSrc, headWeights) {
     probability: probs[i],
   }))
   results.sort((a, b) => b.probability - a.probability)
-  return results
+  return { predictions: results, embedding: embeddingArray }
 }
 
 export function disposeModels() {

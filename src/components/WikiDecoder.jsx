@@ -262,6 +262,8 @@ export default function WikiDecoder() {
   const [playingSampleAudio, setPlayingSampleAudio] = useState(null)
   /** 音频频谱数据（12帧 × 128维），用于可视化 */
   const [audioSpectrum, setAudioSpectrum] = useState(null)
+  /** 图像特征向量（embedding），用于可视化 */
+  const [imageEmbedding, setImageEmbedding] = useState(null)
 
   const videoRef = useRef(null)
   const streamRef = useRef(null)
@@ -274,6 +276,8 @@ export default function WikiDecoder() {
   const analyserRef = useRef(null)
   const audioStreamRef = useRef(null)
   const sampleAudioRefs = useRef({})
+  /** 图像特征向量可视化 Canvas 引用 */
+  const imageFeatureCanvasRef = useRef(null)
   const needCamera = modelType === 'vision' && recognitionOn
 
   const topClassKey = predictions[0]?.className ?? ''
@@ -330,7 +334,10 @@ export default function WikiDecoder() {
 
   // 预测循环
   useEffect(() => {
-    if (!recognitionOn || !headWeights || !videoRef.current) return
+    if (!recognitionOn || !headWeights || !videoRef.current) {
+      // 不再在这里清除 imageEmbedding，允许上传图片/示例图片的特征向量可视化保留
+      return
+    }
     const video = videoRef.current
     const canvas = document.createElement('canvas')
     canvas.width = 224
@@ -350,10 +357,11 @@ export default function WikiDecoder() {
         if (!cancelled) setRecognizing(true)
         ctx.drawImage(video, 0, 0, 224, 224)
         const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
-        const pred = await predict(dataUrl, headWeights)
+        const result = await predict(dataUrl, headWeights)
         if (!cancelled) {
-          setPredictions(pred)
-          const top = pred[0]
+          setPredictions(result.predictions)
+          setImageEmbedding(result.embedding)
+          const top = result.predictions[0]
           if (top && encyclopedia && encyclopedia[top.className]) {
             setRagText(encyclopedia[top.className])
           } else if (top && encyclopedia) {
@@ -372,6 +380,8 @@ export default function WikiDecoder() {
     return () => {
       cancelled = true
       if (predictIntervalRef.current) clearTimeout(predictIntervalRef.current)
+      // 当摄像头识别关闭时，清除实时识别的 embedding（但保留上传图片的 embedding）
+      // 注意：这里只在摄像头识别真正关闭时清除，不会影响上传图片的识别结果
     }
   }, [recognitionOn, headWeights, encyclopedia])
 
@@ -792,14 +802,69 @@ export default function WikiDecoder() {
     }
   }, [audioSpectrum, drawSpectrogram])
 
+  /** 绘制图像特征向量到 Canvas（与音频频谱相同的柱状图样式） */
+  const drawImageFeatures = useCallback((embedding, canvas) => {
+    if (!embedding || !embedding.length || !canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const width = canvas.width
+    const height = canvas.height
+    const embeddingDim = embedding.length
+
+    // 清除画布（使用与 AudioArray 相同的半透明背景）
+    ctx.fillStyle = 'rgba(10, 14, 20, 0.4)'
+    ctx.fillRect(0, 0, width, height)
+
+    // 将特征向量（通常是1280维）可视化为64个柱状图
+    const BARS = 64
+    const step = Math.floor(embeddingDim / BARS)
+    
+    // 归一化特征向量值到0-1范围（使用绝对值并归一化）
+    const absValues = embedding.map(v => Math.abs(v))
+    const maxVal = Math.max(...absValues, 1e-10)
+    const normalized = absValues.map(v => v / maxVal)
+    
+    // 绘制柱状图（与 AudioArray 相同的样式）
+    for (let i = 0; i < BARS; i++) {
+      const binIdx = i * step
+      const value = normalized[binIdx] || 0
+      // 将归一化的值（0-1）转换为柱状图高度
+      const barH = value * height * 0.9
+      const x = (i / BARS) * width
+      
+      // 使用与 AudioArray 相同的绿色和阴影效果
+      ctx.fillStyle = '#39ff14'
+      ctx.shadowColor = 'rgba(57, 255, 20, 0.8)'
+      ctx.shadowBlur = 8
+      ctx.fillRect(x + 1, height - barH, width / BARS - 2, barH)
+    }
+    ctx.shadowBlur = 0
+  }, [])
+
+  // 当图像特征向量变化时，重新绘制
+  useEffect(() => {
+    if (imageEmbedding && imageFeatureCanvasRef.current) {
+      const canvas = imageFeatureCanvasRef.current
+      // 使用与 AudioArray 相同的 Canvas 尺寸
+      if (canvas.width !== 640 || canvas.height !== 200) {
+        canvas.width = 640
+        canvas.height = 200
+      }
+      drawImageFeatures(imageEmbedding, canvas)
+    }
+  }, [imageEmbedding, drawImageFeatures])
+
   const recognizeImage = useCallback(
     async (dataUrl) => {
       if (!headWeights) return
+      setImageEmbedding(null) // 清除旧的 embedding
       setRecognizing(true)
       try {
-        const pred = await predict(dataUrl, headWeights)
-        setPredictions(pred)
-        const top = pred[0]
+        const result = await predict(dataUrl, headWeights)
+        setPredictions(result.predictions)
+        setImageEmbedding(result.embedding)
+        const top = result.predictions[0]
         if (top && encyclopedia?.[top.className]) {
           setRagText(encyclopedia[top.className])
         } else if (top && encyclopedia) {
@@ -811,6 +876,7 @@ export default function WikiDecoder() {
         }
       } catch (err) {
         setPredictions([])
+        setImageEmbedding(null)
         setRagText('识别失败：' + (err?.message || '未知错误'))
       } finally {
         setRecognizing(false)
@@ -823,6 +889,7 @@ export default function WikiDecoder() {
     async (e) => {
       const file = e.target.files?.[0]
       if (!file) return
+      setImageEmbedding(null) // 清除旧的 embedding
       const dataUrl = await new Promise((resolve, reject) => {
         const r = new FileReader()
         r.onload = () => resolve(r.result)
@@ -841,6 +908,7 @@ export default function WikiDecoder() {
         setModelError('请先加载视觉模型')
         return
       }
+      setImageEmbedding(null) // 清除旧的 embedding
       const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
       const imgUrl = `${base}/samples/fruits/${sample.category}/${sample.filename}`
       try {
@@ -859,6 +927,7 @@ export default function WikiDecoder() {
       } catch (err) {
         setModelError(err?.message || '加载示例图片失败')
         setPredictions([])
+        setImageEmbedding(null)
         setRagText('')
       }
     },
@@ -1341,6 +1410,24 @@ export default function WikiDecoder() {
             />
             <p className="text-gray-500 text-xs px-4 py-2">
               64个频率柱状图 | 显示{audioSpectrum.length}帧的平均频谱（约{((audioSpectrum.length * 0.1).toFixed(1))}秒音频）
+            </p>
+          </div>
+        )}
+
+        {/* 步骤 3：图像特征向量可视化（与音频频谱相同的样式） */}
+        {modelType === 'vision' && imageEmbedding && (
+          <div className="rounded-lg bg-[var(--lab-bg)] tech-border mb-4">
+            <p className="text-[var(--lab-cyan)] text-sm font-bold px-4 py-2 border-b border-[var(--lab-border)]">
+              图像特征向量（{imageEmbedding.length}维）
+            </p>
+            <canvas
+              ref={imageFeatureCanvasRef}
+              width={640}
+              height={200}
+              className="w-full h-48 block"
+            />
+            <p className="text-gray-500 text-xs px-4 py-2">
+              64个特征柱状图 | 显示{imageEmbedding.length}维特征向量的可视化（MobileNet 提取）
             </p>
           </div>
         )}
