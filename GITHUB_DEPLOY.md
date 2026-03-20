@@ -18,16 +18,47 @@ git branch -M main
 git remote -v
 ```
 
-## 二、推送代码
+## 二、推送代码（HTTPS）
+
+GitHub **不再支持**用「登录密码」推代码；`Password` 一栏必须填 **Personal Access Token（PAT）**，否则会报：
+
+`Password authentication is not supported for Git operations`
+
+### 用 Token 推送（推荐新手）
+
+1. 浏览器打开（需登录 GitHub）：  
+   **https://github.com/settings/tokens**
+2. **Generate new token** → 选 **Fine-grained** 或 **Classic** 均可。  
+   - Classic：勾选 **`repo`** 即可。  
+   - Fine-grained：Repository 选 `AI_course`，Permissions → **Contents: Read and write**。
+3. 生成后**复制整串 token**（只显示一次）。
+4. 在终端执行：
 
 ```bash
 git push -u origin main
 ```
 
-若提示登录：使用 **Personal Access Token** 作为密码，或配置 [SSH 密钥](https://docs.github.com/en/authentication/connecting-to-github-with-ssh) 后改用：
+- **Username**：`Freasy9`  
+- **Password**：粘贴 **token**（不是你的 GitHub 密码）
+
+5. 可选：用 macOS **钥匙串**保存凭据，避免每次都输入：
+
+```bash
+git config --global credential.helper osxkeychain
+```
+
+### 用 SSH 推送（免每次输 Token）
+
+1. 若本机还没有密钥：  
+   `ssh-keygen -t ed25519 -C "你的邮箱" -f ~/.ssh/id_ed25519`（一路回车即可）  
+2. 显示公钥并复制：  
+   `cat ~/.ssh/id_ed25519.pub`  
+3. 打开 **https://github.com/settings/keys** → **New SSH key** → 粘贴保存。  
+4. 改远程并推送：
 
 ```bash
 git remote set-url origin git@github.com:Freasy9/AI_course.git
+ssh -T git@github.com   # 首次会问是否信任，输入 yes
 git push -u origin main
 ```
 
