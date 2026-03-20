@@ -17,8 +17,6 @@
 - **布谷鸟** — XC317900 - Common Cuckoo - Cuculus canorus.mp3
 - **布谷鸟** — XC565207 - Common Cuckoo - Cuculus canorus.mp3
 - **布谷鸟** — XC913187 - Common Cuckoo - Cuculus canorus.mp3
-- **黄鹂** — XC150005
-- **黄鹂** — XC694854
 - **燕子** — XC385612 - Barn Swallow - Hirundo rustica.mp3
 - **燕子** — XC205735 - Barn Swallow - Hirundo rustica.mp3
 - **燕子** — XC318261 - Barn Swallow - Hirundo rustica rustica.mp3
