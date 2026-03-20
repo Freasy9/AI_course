@@ -11,6 +11,7 @@
     "download-samples": "node scripts/download-samples.js",
     "train-fruit-model": "node scripts/train-fruit-model.js",
     "placeholders:fruit-model": "node scripts/write-placeholder-fruit-model.js",
+    "train-digit-model": "node scripts/train-digit-model.js",
     "build-bird-model": "node scripts/build-bird-audio-model.mjs",
     "download-bird-calls": "node scripts/download-bird-training-audio.mjs"
   },

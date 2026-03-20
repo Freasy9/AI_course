@@ -55,6 +55,8 @@ export default function VisionExplorer() {
   const [predictions, setPredictions] = useState([])
   const [recognizing, setRecognizing] = useState(false)
   const [cameraError, setCameraError] = useState(null)
+  const [loadingBuiltInDigit, setLoadingBuiltInDigit] = useState(false)
+  const [builtInDigitError, setBuiltInDigitError] = useState('')
 
   const videoRef = useRef(null)
   const streamRef = useRef(null)
@@ -146,6 +148,32 @@ export default function VisionExplorer() {
     }
   }, [categories, samples])
 
+  const loadBuiltInDigitModel = useCallback(async () => {
+    setBuiltInDigitError('')
+    setTrainError('')
+    setLoadingBuiltInDigit(true)
+    try {
+      const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
+      const url = `${base}/samples/models/digit-model.json`
+      const res = await fetch(url)
+      if (!res.ok) {
+        throw new Error(
+          `无法加载内置数字模型 (${res.status})，请运行 npm run train-digit-model 生成 digit-model.json`
+        )
+      }
+      const data = await res.json()
+      if (!data.weights || !data.biases || !data.classNames || data.numClasses === undefined) {
+        throw new Error('内置数字模型格式无效')
+      }
+      setHeadWeights(data)
+      setStep(4)
+    } catch (err) {
+      setBuiltInDigitError(err?.message || '加载失败')
+    } finally {
+      setLoadingBuiltInDigit(false)
+    }
+  }, [])
+
   const handleImportModel = useCallback((e) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -153,7 +181,7 @@ export default function VisionExplorer() {
     reader.onload = () => {
       try {
         const data = JSON.parse(reader.result)
-        if (!data.weights || !data.classNames || data.numClasses === undefined) {
+        if (!data.weights || !data.biases || !data.classNames || data.numClasses === undefined) {
           throw new Error('无效的模型文件')
         }
         setHeadWeights(data)
@@ -190,8 +218,8 @@ export default function VisionExplorer() {
       })
       setRecognizing(true)
       try {
-        const pred = await predict(dataUrl, headWeights)
-        setPredictions(pred)
+        const result = await predict(dataUrl, headWeights)
+        setPredictions(result.predictions)
       } catch (_) {
         setPredictions([])
       } finally {
@@ -225,8 +253,8 @@ export default function VisionExplorer() {
         if (!cancelled) setRecognizing(true)
         ctx.drawImage(video, 0, 0, 224, 224)
         const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
-        const pred = await predict(dataUrl, headWeights)
-        if (!cancelled) setPredictions(pred)
+        const result = await predict(dataUrl, headWeights)
+        if (!cancelled) setPredictions(result.predictions)
       } catch (_) {}
       finally {
         if (!cancelled) setRecognizing(false)
@@ -294,6 +322,17 @@ export default function VisionExplorer() {
         >
           📥 导入已保存的模型
         </button>
+        <button
+          type="button"
+          disabled={loadingBuiltInDigit}
+          onClick={loadBuiltInDigitModel}
+          className="rounded-xl border-2 border-[var(--lab-cyan)] px-4 py-2 text-sm text-[var(--lab-cyan)] hover:bg-[rgba(0,245,255,0.1)] transition disabled:opacity-50"
+        >
+          {loadingBuiltInDigit ? '加载中…' : '🔢 导入手写数字识别（内置）'}
+        </button>
+        {builtInDigitError && (
+          <p className="text-red-400 text-sm">{builtInDigitError}</p>
+        )}
       </div>
 
       {/* Step 1: 创建类别 */}
@@ -697,10 +736,17 @@ function Step4Predictor({
     )
   }
 
+  const isDigitModel = headWeights?.classNames?.length === 10 && headWeights.classNames.every((n, i) => n === String(i))
+
   return (
     <div className="tech-border rounded-lg p-6 bg-[var(--lab-panel)]/80 max-w-xl space-y-6">
       <h2 className="text-[var(--lab-cyan)] font-bold text-xl">🔍 测试 AI</h2>
       <p className="text-gray-400 text-sm">点击「识别」开启摄像头，或上传图片进行识别</p>
+      {isDigitModel && (
+        <p className="text-[var(--lab-green)] text-xs bg-[var(--lab-green)]/10 border border-[var(--lab-green)]/30 rounded px-3 py-2">
+          💡 手写数字识别提示：将手写数字（0-9）置于摄像头画面中央，确保光线均匀、对比清晰，数字尽量大一些效果更好。
+        </p>
+      )}
 
       {!recognitionOn ? (
         <div className="flex flex-col items-center gap-4 py-6">
