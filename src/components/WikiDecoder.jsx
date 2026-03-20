@@ -250,6 +250,8 @@ export default function WikiDecoder() {
   const [showSampleImagePicker, setShowSampleImagePicker] = useState(false)
   /** 是否显示示例音频选择器 */
   const [showSampleAudioPicker, setShowSampleAudioPicker] = useState(false)
+  /** 当前播放的示例音频 URL（用于预览） */
+  const [playingSampleAudio, setPlayingSampleAudio] = useState(null)
 
   const videoRef = useRef(null)
   const streamRef = useRef(null)
@@ -261,6 +263,7 @@ export default function WikiDecoder() {
   const audioContextRef = useRef(null)
   const analyserRef = useRef(null)
   const audioStreamRef = useRef(null)
+  const sampleAudioRefs = useRef({})
   const needCamera = modelType === 'vision' && recognitionOn
 
   const topClassKey = predictions[0]?.className ?? ''
@@ -1036,21 +1039,39 @@ export default function WikiDecoder() {
             {showSampleImagePicker && canRecognize && (
               <div className="rounded-lg border-2 border-[var(--lab-cyan)]/40 bg-[var(--lab-bg)]/60 p-4">
                 <p className="text-[var(--lab-cyan)] font-bold text-sm mb-2">选择示例图片（来自 samples/fruits/）</p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-4 gap-2">
-                  {SAMPLE_FRUIT_IMAGES.map((sample, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => handleUseSampleImage(sample)}
-                      disabled={recognizing}
-                      className="rounded-lg border border-[var(--lab-border)] bg-[var(--lab-panel)]/50 px-3 py-2 text-xs font-medium text-gray-300 hover:border-[var(--lab-cyan)] hover:text-[var(--lab-cyan)] hover:bg-[var(--lab-cyan)]/10 transition touch-manipulation disabled:opacity-50"
-                    >
-                      {sample.label}
-                    </button>
-                  ))}
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-4 gap-3">
+                  {SAMPLE_FRUIT_IMAGES.map((sample, idx) => {
+                    const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
+                    const imgUrl = `${base}/samples/fruits/${sample.category}/${sample.filename}`
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => handleUseSampleImage(sample)}
+                        disabled={recognizing}
+                        className="relative rounded-lg border-2 border-[var(--lab-border)] bg-[var(--lab-panel)]/50 overflow-hidden hover:border-[var(--lab-cyan)] hover:bg-[var(--lab-cyan)]/10 transition-all touch-manipulation disabled:opacity-50 group"
+                      >
+                        <img
+                          src={imgUrl}
+                          alt={sample.label}
+                          className="w-full h-20 object-cover"
+                          loading="lazy"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <span className="absolute bottom-1 left-1 right-1 text-[10px] font-medium text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] text-center">
+                          {sample.category}
+                        </span>
+                        {recognizing && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                            <span className="text-[var(--lab-cyan)] text-xs">识别中…</span>
+                          </div>
+                        )}
+                      </button>
+                    )
+                  })}
                 </div>
                 <p className="text-gray-500 text-[10px] mt-2">
-                  点击任意示例图片将自动加载并识别（需先加载模型与百科全书）
+                  点击任意缩略图将自动加载并识别（需先加载模型与百科全书）
                 </p>
               </div>
             )}
@@ -1105,21 +1126,73 @@ export default function WikiDecoder() {
             {showSampleAudioPicker && canRecognizeAudio && (
               <div className="rounded-lg border-2 border-[var(--lab-cyan)]/40 bg-[var(--lab-bg)]/60 p-4">
                 <p className="text-[var(--lab-cyan)] font-bold text-sm mb-2">选择示例音频（来自 samples/built-in-bird-calls/）</p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {SAMPLE_BIRD_AUDIOS.map((sample, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => handleUseSampleAudio(sample)}
-                      disabled={audioUploading || audioRecording}
-                      className="rounded-lg border border-[var(--lab-border)] bg-[var(--lab-panel)]/50 px-3 py-2 text-xs font-medium text-gray-300 hover:border-[var(--lab-cyan)] hover:text-[var(--lab-cyan)] hover:bg-[var(--lab-cyan)]/10 transition touch-manipulation disabled:opacity-50"
-                    >
-                      {sample.label}
-                    </button>
-                  ))}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {SAMPLE_BIRD_AUDIOS.map((sample, idx) => {
+                    const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
+                    const audioUrl = `${base}/samples/built-in-bird-calls/${sample.category}/${sample.filename}`
+                    const audioKey = `${sample.category}-${idx}`
+                    const isPlaying = playingSampleAudio === audioKey
+                    return (
+                      <div
+                        key={idx}
+                        className="flex items-center gap-3 rounded-lg border border-[var(--lab-border)] bg-[var(--lab-panel)]/50 p-3 hover:border-[var(--lab-cyan)] transition"
+                      >
+                        <audio
+                          ref={(el) => {
+                            if (el) sampleAudioRefs.current[audioKey] = el
+                            else delete sampleAudioRefs.current[audioKey]
+                          }}
+                          src={audioUrl}
+                          preload="metadata"
+                          onPlay={() => {
+                            Object.keys(sampleAudioRefs.current).forEach((k) => {
+                              if (k !== audioKey && !sampleAudioRefs.current[k].paused) {
+                                sampleAudioRefs.current[k].pause()
+                              }
+                            })
+                            setPlayingSampleAudio(audioKey)
+                          }}
+                          onEnded={() => setPlayingSampleAudio(null)}
+                          onPause={() => {
+                            if (playingSampleAudio === audioKey) setPlayingSampleAudio(null)
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const audio = sampleAudioRefs.current[audioKey]
+                            if (!audio) return
+                            if (isPlaying) {
+                              audio.pause()
+                            } else {
+                              audio.play().catch(() => {})
+                            }
+                          }}
+                          disabled={audioUploading || audioRecording}
+                          className="flex-shrink-0 w-10 h-10 rounded-full border-2 border-[var(--lab-cyan)] bg-[var(--lab-cyan)]/10 text-[var(--lab-cyan)] flex items-center justify-center hover:bg-[var(--lab-cyan)]/20 transition disabled:opacity-50 text-lg"
+                        >
+                          {isPlaying ? '⏸️' : '▶️'}
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-200 truncate">{sample.category}</p>
+                          <p className="text-[10px] text-gray-500 truncate">
+                            {sample.filename.replace(/^XC\d+ - /, '').replace(/\.mp3$/, '')}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleUseSampleAudio(sample)}
+                          disabled={audioUploading || audioRecording}
+                          className="flex-shrink-0 rounded-lg border border-[var(--lab-green)] bg-[var(--lab-green)]/10 text-[var(--lab-green)] px-3 py-1.5 text-xs font-medium hover:bg-[var(--lab-green)]/20 transition disabled:opacity-50"
+                        >
+                          {audioUploading ? '识别中…' : '识别'}
+                        </button>
+                      </div>
+                    )
+                  })}
                 </div>
                 <p className="text-gray-500 text-[10px] mt-2">
-                  点击任意示例音频将自动加载并识别（需先加载模型与百科全书）
+                  点击 ▶️ 预览音频，点击「识别」按钮进行识别（需先加载模型与百科全书）
                 </p>
               </div>
             )}
