@@ -24,12 +24,19 @@ const HOP_MS = 100
 const FRAMES_PER_SAMPLE = 12
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (compatible; EduBirdModel/1.0)'
 
-/** 经 Content-Disposition 校验的 XC 编号（种名与中文类对应） */
+/** 
+ * 经 Content-Disposition 校验的 XC 编号（种名与中文类对应）
+ * 注意：此处的类别需与 download-bird-training-audio.mjs 中的 SOURCES 保持一致
+ * 添加新鸟类后需重新运行此脚本训练模型
+ */
 const SOURCES = {
   喜鹊: [42388, 87689, 712688, 732048],
-  乌鸦: [727695, 731996, 486743, 209767, 166338],
   麻雀: [455407, 455408, 455409, 455410, 455411, 455412],
   布谷鸟: [655226, 53403, 317900, 565207, 913187],
+  // 扩展鸟类（需与 download-bird-training-audio.mjs 保持一致）
+  黄鹂: [150005, 694854],
+  燕子: [385612, 205735, 318261, 83449],
+  啄木鸟: [573226, 672087, 79043, 688153],
 }
 
 function hamming(n, N) {

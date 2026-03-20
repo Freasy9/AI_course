@@ -71,32 +71,28 @@ function downloadWikiGeneratedImage(url, baseName) {
 
 const FEATURE_LEN = 128
 
-/** 示例水果图片列表（与 public/samples/fruits/ 目录结构对应） */
+/** 示例水果图片列表（与 public/samples/fruits/ 目录结构对应，每组只显示一张） */
 const SAMPLE_FRUIT_IMAGES = [
-  { category: '苹果', filename: 'apple_1.jpg', label: '苹果 #1' },
-  { category: '苹果', filename: 'apple_2.jpg', label: '苹果 #2' },
-  { category: '香蕉', filename: 'banana_1.jpg', label: '香蕉 #1' },
-  { category: '香蕉', filename: 'banana_2.jpg', label: '香蕉 #2' },
-  { category: '橙子', filename: 'orange_1.jpg', label: '橙子 #1' },
-  { category: '橙子', filename: 'orange_2.jpg', label: '橙子 #2' },
-  { category: '葡萄', filename: 'grape_1.jpg', label: '葡萄 #1' },
-  { category: '葡萄', filename: 'grape_2.jpg', label: '葡萄 #2' },
-  { category: '草莓', filename: 'strawberry_1.jpg', label: '草莓 #1' },
-  { category: '草莓', filename: 'strawberry_2.jpg', label: '草莓 #2' },
-  { category: '西瓜', filename: 'watermelon_1.jpg', label: '西瓜 #1' },
-  { category: '西瓜', filename: 'watermelon_2.jpg', label: '西瓜 #2' },
-  { category: '桃子', filename: 'peach_1.jpg', label: '桃子 #1' },
-  { category: '桃子', filename: 'peach_2.jpg', label: '桃子 #2' },
-  { category: '梨', filename: 'pear_1.jpg', label: '梨 #1' },
-  { category: '梨', filename: 'pear_2.jpg', label: '梨 #2' },
+  { category: '苹果', filename: 'apple_1.jpg', label: '苹果' },
+  { category: '香蕉', filename: 'banana_1.jpg', label: '香蕉' },
+  { category: '橙子', filename: 'orange_1.jpg', label: '橙子' },
+  { category: '葡萄', filename: 'grape_1.jpg', label: '葡萄' },
+  { category: '草莓', filename: 'strawberry_1.jpg', label: '草莓' },
+  { category: '西瓜', filename: 'watermelon_1.jpg', label: '西瓜' },
+  { category: '桃子', filename: 'peach_1.jpg', label: '桃子' },
+  { category: '梨', filename: 'pear_1.jpg', label: '梨' },
 ]
 
-/** 示例鸟类音频列表（与 public/samples/built-in-bird-calls/ 目录结构对应，每个类别选第一个文件） */
+/** 示例鸟类音频列表（与 public/samples/built-in-bird-calls/ 目录结构对应，每个类别选第一个文件）
+ * 注意：若添加新鸟类，需先运行 npm run download-bird-calls 下载音频，并重新训练模型（npm run build-bird-model）
+ */
 const SAMPLE_BIRD_AUDIOS = [
-  { category: '喜鹊', filename: 'XC42388 - Eurasian Magpie - Pica pica.mp3', label: '喜鹊 #1' },
-  { category: '乌鸦', filename: 'XC166338 - Northern Raven - Corvus corax subcorax.mp3', label: '乌鸦 #1' },
-  { category: '麻雀', filename: 'XC455407 - Eurasian Tree Sparrow - Passer montanus montanus.mp3', label: '麻雀 #1' },
-  { category: '布谷鸟', filename: 'XC317900 - Common Cuckoo - Cuculus canorus.mp3', label: '布谷鸟 #1' },
+  { category: '喜鹊', filename: 'XC42388 - Eurasian Magpie - Pica pica.mp3', label: '喜鹊' },
+  { category: '麻雀', filename: 'XC455407 - Eurasian Tree Sparrow - Passer montanus montanus.mp3', label: '麻雀' },
+  { category: '布谷鸟', filename: 'XC317900 - Common Cuckoo - Cuculus canorus.mp3', label: '布谷鸟' },
+  { category: '黄鹂', filename: 'XC150005.mp3', label: '黄鹂' },
+  { category: '燕子', filename: 'XC385612 - Barn Swallow - Hirundo rustica.mp3', label: '燕子' },
+  { category: '啄木鸟', filename: 'XC573226 - Great Spotted Woodpecker - Dendrocopos major.mp3', label: '啄木鸟' },
 ]
 function sanitizeAndNormalizeFFT(float32Arr, length = FEATURE_LEN) {
   const out = []
@@ -911,7 +907,7 @@ export default function WikiDecoder() {
         )}
         {modelType === 'audio' && (
           <p className="mt-3 text-gray-500 text-xs leading-relaxed">
-            内置模型识别四类：<strong className="text-gray-400">喜鹊、乌鸦、麻雀、布谷鸟</strong>
+            内置模型识别六类：<strong className="text-gray-400">喜鹊、麻雀、布谷鸟、黄鹂、燕子、啄木鸟</strong>
             （基于 xeno-canto 公开录音训练）。请配合下方「使用示例鸟类百科」。需要「画眉」等请在频率监听阵列自训后导出 JSON。
           </p>
         )}
@@ -1125,7 +1121,12 @@ export default function WikiDecoder() {
             </div>
             {showSampleAudioPicker && canRecognizeAudio && (
               <div className="rounded-lg border-2 border-[var(--lab-cyan)]/40 bg-[var(--lab-bg)]/60 p-4">
-                <p className="text-[var(--lab-cyan)] font-bold text-sm mb-2">选择示例音频（来自 samples/built-in-bird-calls/）</p>
+                <p className="text-[var(--lab-cyan)] font-bold text-sm mb-2">
+                  选择示例音频（来自 samples/built-in-bird-calls/）
+                </p>
+                <p className="text-amber-400/90 text-xs mb-2">
+                  ⚠️ 若识别结果不准确（如乌鸦识别为喜鹊），可能是模型训练时类别特征相似。建议在「频率监听阵列」模块重新训练包含更多鸟类的模型。
+                </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {SAMPLE_BIRD_AUDIOS.map((sample, idx) => {
                     const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')

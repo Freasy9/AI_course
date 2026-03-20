@@ -6,11 +6,6 @@
 - **喜鹊** — XC87689 - Eurasian Magpie - Pica pica.mp3
 - **喜鹊** — XC712688 - Eurasian Magpie - Pica pica.mp3
 - **喜鹊** — XC732048 - Eurasian Magpie - Pica pica.mp3
-- **乌鸦** — XC727695 - Northern Raven - Corvus corax.mp3
-- **乌鸦** — XC731996 - Northern Raven - Corvus corax.mp3
-- **乌鸦** — XC486743 - Northern Raven - Corvus corax.mp3
-- **乌鸦** — XC209767 - Northern Raven - Corvus corax.mp3
-- **乌鸦** — XC166338 - Northern Raven - Corvus corax subcorax.mp3
 - **麻雀** — XC455407 - Eurasian Tree Sparrow - Passer montanus montanus.mp3
 - **麻雀** — XC455408 - Eurasian Tree Sparrow - Passer montanus montanus.mp3
 - **麻雀** — XC455409 - Eurasian Tree Sparrow - Passer montanus montanus.mp3
@@ -22,3 +17,13 @@
 - **布谷鸟** — XC317900 - Common Cuckoo - Cuculus canorus.mp3
 - **布谷鸟** — XC565207 - Common Cuckoo - Cuculus canorus.mp3
 - **布谷鸟** — XC913187 - Common Cuckoo - Cuculus canorus.mp3
+- **黄鹂** — XC150005
+- **黄鹂** — XC694854
+- **燕子** — XC385612 - Barn Swallow - Hirundo rustica.mp3
+- **燕子** — XC205735 - Barn Swallow - Hirundo rustica.mp3
+- **燕子** — XC318261 - Barn Swallow - Hirundo rustica rustica.mp3
+- **燕子** — XC83449 - Barn Swallow - Hirundo rustica.mp3
+- **啄木鸟** — XC573226 - Great Spotted Woodpecker - Dendrocopos major.mp3
+- **啄木鸟** — XC672087 - Great Spotted Woodpecker - Dendrocopos major.mp3
+- **啄木鸟** — XC79043 - Great Spotted Woodpecker - Dendrocopos major.mp3
+- **啄木鸟** — XC688153 - Great Spotted Woodpecker - Dendrocopos major.mp3
