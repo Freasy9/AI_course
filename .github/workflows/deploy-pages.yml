@@ -26,7 +26,8 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - run: npm ci
+      # @teachablemachine/image 要求 tfjs@1.3.1，但项目用 tfjs@4.22.0；本地可能用 --legacy-peer-deps 安装
+      - run: npm ci --legacy-peer-deps
       # 在线地址：https://freasy9.github.io/AI_course/  → base 必须为 /AI_course/
       - name: Build
         env:
