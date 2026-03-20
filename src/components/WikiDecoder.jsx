@@ -90,8 +90,9 @@ const SAMPLE_BIRD_AUDIOS = [
   { category: '喜鹊', filename: 'XC42388 - Eurasian Magpie - Pica pica.mp3', label: '喜鹊' },
   { category: '麻雀', filename: 'XC455407 - Eurasian Tree Sparrow - Passer montanus montanus.mp3', label: '麻雀' },
   { category: '布谷鸟', filename: 'XC317900 - Common Cuckoo - Cuculus canorus.mp3', label: '布谷鸟' },
-  { category: '燕子', filename: 'XC385612 - Barn Swallow - Hirundo rustica.mp3', label: '燕子' },
+  { category: '大山雀', filename: 'XC727043 - Great Tit - Parus major.mp3', label: '大山雀' },
   { category: '啄木鸟', filename: 'XC573226 - Great Spotted Woodpecker - Dendrocopos major.mp3', label: '啄木鸟' },
+  { category: '黑鸟', filename: 'XC102018 - Common Blackbird - Turdus merula.mp3', label: '黑鸟' },
 ]
 function sanitizeAndNormalizeFFT(float32Arr, length = FEATURE_LEN) {
   const out = []
@@ -906,7 +907,7 @@ export default function WikiDecoder() {
         )}
         {modelType === 'audio' && (
           <p className="mt-3 text-gray-500 text-xs leading-relaxed">
-            内置模型识别五类：<strong className="text-gray-400">喜鹊、麻雀、布谷鸟、燕子、啄木鸟</strong>
+            内置模型识别六类：<strong className="text-gray-400">喜鹊、麻雀、布谷鸟、大山雀、啄木鸟、黑鸟</strong>
             （基于 xeno-canto 公开录音训练）。请配合下方「使用示例鸟类百科」。需要「黄鹂」「画眉」等请在频率监听阵列自训后导出 JSON。
           </p>
         )}
