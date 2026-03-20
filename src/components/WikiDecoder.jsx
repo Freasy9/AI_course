@@ -70,6 +70,26 @@ function downloadWikiGeneratedImage(url, baseName) {
 }
 
 const FEATURE_LEN = 128
+
+/** 示例水果图片列表（与 public/samples/fruits/ 目录结构对应） */
+const SAMPLE_FRUIT_IMAGES = [
+  { category: '苹果', filename: 'apple_1.jpg', label: '苹果 #1' },
+  { category: '苹果', filename: 'apple_2.jpg', label: '苹果 #2' },
+  { category: '香蕉', filename: 'banana_1.jpg', label: '香蕉 #1' },
+  { category: '香蕉', filename: 'banana_2.jpg', label: '香蕉 #2' },
+  { category: '橙子', filename: 'orange_1.jpg', label: '橙子 #1' },
+  { category: '橙子', filename: 'orange_2.jpg', label: '橙子 #2' },
+  { category: '葡萄', filename: 'grape_1.jpg', label: '葡萄 #1' },
+  { category: '葡萄', filename: 'grape_2.jpg', label: '葡萄 #2' },
+  { category: '草莓', filename: 'strawberry_1.jpg', label: '草莓 #1' },
+  { category: '草莓', filename: 'strawberry_2.jpg', label: '草莓 #2' },
+  { category: '西瓜', filename: 'watermelon_1.jpg', label: '西瓜 #1' },
+  { category: '西瓜', filename: 'watermelon_2.jpg', label: '西瓜 #2' },
+  { category: '桃子', filename: 'peach_1.jpg', label: '桃子 #1' },
+  { category: '桃子', filename: 'peach_2.jpg', label: '桃子 #2' },
+  { category: '梨', filename: 'pear_1.jpg', label: '梨 #1' },
+  { category: '梨', filename: 'pear_2.jpg', label: '梨 #2' },
+]
 function sanitizeAndNormalizeFFT(float32Arr, length = FEATURE_LEN) {
   const out = []
   const clampLo = -100
@@ -218,6 +238,8 @@ export default function WikiDecoder() {
   const [showWikiEncyclopedia, setShowWikiEncyclopedia] = useState(false)
   /** 第 4 步：是否展示配图区域（点击「生成结果图片」后） */
   const [showWikiImagePanel, setShowWikiImagePanel] = useState(false)
+  /** 是否显示示例图片选择器 */
+  const [showSampleImagePicker, setShowSampleImagePicker] = useState(false)
 
   const videoRef = useRef(null)
   const streamRef = useRef(null)
@@ -623,16 +645,9 @@ export default function WikiDecoder() {
     [audioModel, audioClassNames, encyclopedia, applyBirdPrediction],
   )
 
-  const handleImageUpload = useCallback(
-    async (e) => {
-      const file = e.target.files?.[0]
-      if (!file || !headWeights) return
-      const dataUrl = await new Promise((resolve, reject) => {
-        const r = new FileReader()
-        r.onload = () => resolve(r.result)
-        r.onerror = reject
-        r.readAsDataURL(file)
-      })
+  const recognizeImage = useCallback(
+    async (dataUrl) => {
+      if (!headWeights) return
       setRecognizing(true)
       try {
         const pred = await predict(dataUrl, headWeights)
@@ -653,9 +668,54 @@ export default function WikiDecoder() {
       } finally {
         setRecognizing(false)
       }
+    },
+    [headWeights, encyclopedia],
+  )
+
+  const handleImageUpload = useCallback(
+    async (e) => {
+      const file = e.target.files?.[0]
+      if (!file) return
+      const dataUrl = await new Promise((resolve, reject) => {
+        const r = new FileReader()
+        r.onload = () => resolve(r.result)
+        r.onerror = reject
+        r.readAsDataURL(file)
+      })
+      await recognizeImage(dataUrl)
       e.target.value = ''
     },
-    [headWeights, encyclopedia]
+    [recognizeImage],
+  )
+
+  const handleUseSampleImage = useCallback(
+    async (sample) => {
+      if (!headWeights) {
+        setModelError('请先加载视觉模型')
+        return
+      }
+      const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
+      const imgUrl = `${base}/samples/fruits/${sample.category}/${sample.filename}`
+      try {
+        const response = await fetch(imgUrl)
+        if (!response.ok) {
+          throw new Error(`无法加载示例图片 (${response.status})`)
+        }
+        const blob = await response.blob()
+        const dataUrl = await new Promise((resolve, reject) => {
+          const r = new FileReader()
+          r.onload = () => resolve(r.result)
+          r.onerror = reject
+          r.readAsDataURL(blob)
+        })
+        await recognizeImage(dataUrl)
+      } catch (err) {
+        setModelError(err?.message || '加载示例图片失败')
+        setPredictions([])
+        setRagText('')
+      }
+    },
+    [headWeights, recognizeImage],
   )
 
   const canRecognizeVision = headWeights && encyclopedia
@@ -885,34 +945,65 @@ export default function WikiDecoder() {
         )}
 
         {modelType === 'vision' && (
-          <div className="flex flex-wrap gap-3 mb-4">
-            <label className="rounded-xl border-2 border-[var(--lab-border)] px-4 py-2 text-gray-300 text-sm font-medium cursor-pointer hover:border-[var(--lab-cyan)] hover:text-[var(--lab-cyan)] transition touch-manipulation">
-              上传图片识别
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleImageUpload}
-                disabled={!canRecognize}
-              />
-            </label>
-            {!recognitionOn ? (
+          <div className="space-y-3 mb-4">
+            <div className="flex flex-wrap gap-3">
+              <label className="rounded-xl border-2 border-[var(--lab-border)] px-4 py-2 text-gray-300 text-sm font-medium cursor-pointer hover:border-[var(--lab-cyan)] hover:text-[var(--lab-cyan)] transition touch-manipulation">
+                上传图片识别
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageUpload}
+                  disabled={!canRecognize}
+                />
+              </label>
               <button
                 type="button"
-                onClick={() => setRecognitionOn(true)}
+                onClick={() => setShowSampleImagePicker(!showSampleImagePicker)}
                 disabled={!canRecognize}
-                className="rounded-xl border-2 border-[var(--lab-green)] bg-[var(--lab-green)]/10 text-[var(--lab-green)] px-4 py-2 font-bold disabled:opacity-50 hover:bg-[var(--lab-green)]/20 transition touch-manipulation"
+                className="rounded-xl border-2 border-[var(--lab-cyan)] bg-[var(--lab-cyan)]/10 text-[var(--lab-cyan)] px-4 py-2 text-sm font-bold disabled:opacity-50 hover:bg-[var(--lab-cyan)]/20 transition touch-manipulation"
               >
-                开启摄像头识别
+                {showSampleImagePicker ? '收起示例' : '📷 使用示例图片'}
               </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setRecognitionOn(false)}
-                className="rounded-xl border-2 border-red-400/60 text-red-400 px-4 py-2 font-bold hover:bg-red-400/10 transition touch-manipulation"
-              >
-                关闭摄像头
-              </button>
+              {!recognitionOn ? (
+                <button
+                  type="button"
+                  onClick={() => setRecognitionOn(true)}
+                  disabled={!canRecognize}
+                  className="rounded-xl border-2 border-[var(--lab-green)] bg-[var(--lab-green)]/10 text-[var(--lab-green)] px-4 py-2 font-bold disabled:opacity-50 hover:bg-[var(--lab-green)]/20 transition touch-manipulation"
+                >
+                  开启摄像头识别
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setRecognitionOn(false)}
+                  className="rounded-xl border-2 border-red-400/60 text-red-400 px-4 py-2 font-bold hover:bg-red-400/10 transition touch-manipulation"
+                >
+                  关闭摄像头
+                </button>
+              )}
+            </div>
+            {showSampleImagePicker && canRecognize && (
+              <div className="rounded-lg border-2 border-[var(--lab-cyan)]/40 bg-[var(--lab-bg)]/60 p-4">
+                <p className="text-[var(--lab-cyan)] font-bold text-sm mb-2">选择示例图片（来自 samples/fruits/）</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-4 gap-2">
+                  {SAMPLE_FRUIT_IMAGES.map((sample, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleUseSampleImage(sample)}
+                      disabled={recognizing}
+                      className="rounded-lg border border-[var(--lab-border)] bg-[var(--lab-panel)]/50 px-3 py-2 text-xs font-medium text-gray-300 hover:border-[var(--lab-cyan)] hover:text-[var(--lab-cyan)] hover:bg-[var(--lab-cyan)]/10 transition touch-manipulation disabled:opacity-50"
+                    >
+                      {sample.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-gray-500 text-[10px] mt-2">
+                  点击任意示例图片将自动加载并识别（需先加载模型与百科全书）
+                </p>
+              </div>
             )}
           </div>
         )}
