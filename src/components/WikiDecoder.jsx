@@ -729,7 +729,7 @@ export default function WikiDecoder() {
   /** 频谱图 Canvas 引用 */
   const spectrogramCanvasRef = useRef(null)
 
-  /** 绘制频谱图到 Canvas */
+  /** 绘制频谱图到 Canvas（与 AudioArray 模块相同的柱状图样式） */
   const drawSpectrogram = useCallback((spectrum, canvas) => {
     if (!spectrum || !spectrum.length || !canvas) return
     const ctx = canvas.getContext('2d')
@@ -740,57 +740,53 @@ export default function WikiDecoder() {
     const numFrames = spectrum.length
     const numBins = spectrum[0]?.length || FEATURE_LEN
 
-    // 清除画布
-    ctx.fillStyle = '#000000'
+    // 清除画布（使用与 AudioArray 相同的半透明背景）
+    ctx.fillStyle = 'rgba(10, 14, 20, 0.4)'
     ctx.fillRect(0, 0, width, height)
 
-    // 计算每个像素对应的帧和频率bin
-    const frameWidth = width / numFrames
-    const binHeight = height / numBins
-
-    // 绘制频谱图
+    // 计算平均频谱（将所有帧平均，得到单一的频谱）
+    const avgSpectrum = new Array(numBins).fill(0)
     for (let f = 0; f < numFrames; f++) {
       const frame = spectrum[f]
       if (!frame) continue
       for (let b = 0; b < numBins; b++) {
-        const value = frame[b] || 0
-        // 颜色映射：从深色到亮绿色/青色
-        // value 范围是 0-1（归一化后的对数幅度）
-        const hue = 180 // 青色
-        const saturation = 100
-        const lightness = 10 + value * 50 // 10-60% 亮度
-        ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`
-        const x = f * frameWidth
-        const y = height - (b + 1) * binHeight // 翻转Y轴，低频在底部
-        ctx.fillRect(x, y, Math.ceil(frameWidth), Math.ceil(binHeight))
+        avgSpectrum[b] += frame[b] || 0
       }
     }
+    for (let b = 0; b < numBins; b++) {
+      avgSpectrum[b] /= numFrames
+    }
 
-    // 绘制坐标轴和标签（可选）
-    ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)'
-    ctx.lineWidth = 1
-    // Y轴（频率）
-    ctx.beginPath()
-    ctx.moveTo(0, 0)
-    ctx.lineTo(0, height)
-    ctx.stroke()
-    // X轴（时间）
-    ctx.beginPath()
-    ctx.moveTo(0, height)
-    ctx.lineTo(width, height)
-    ctx.stroke()
+    // 使用与 AudioArray 相同的 BARS 数量（64）
+    const BARS = 64
+    const step = Math.floor(numBins / BARS)
+    
+    // 绘制柱状图（与 AudioArray 相同的样式）
+    for (let i = 0; i < BARS; i++) {
+      const binIdx = i * step
+      const value = avgSpectrum[binIdx] || 0
+      // 将归一化的值（0-1）转换为 0-255 范围，用于绘制
+      const barValue = Math.min(255, value * 255)
+      const barH = (barValue / 255) * height * 0.9
+      const x = (i / BARS) * width
+      
+      // 使用与 AudioArray 相同的绿色和阴影效果
+      ctx.fillStyle = '#39ff14'
+      ctx.shadowColor = 'rgba(57, 255, 20, 0.8)'
+      ctx.shadowBlur = 8
+      ctx.fillRect(x + 1, height - barH, width / BARS - 2, barH)
+    }
+    ctx.shadowBlur = 0
   }, [])
 
   // 当频谱数据变化时，重新绘制
   useEffect(() => {
     if (audioSpectrum && spectrogramCanvasRef.current) {
       const canvas = spectrogramCanvasRef.current
-      // 设置Canvas尺寸（如果需要调整）
-      const displayWidth = canvas.offsetWidth || 600
-      const displayHeight = 256
-      if (canvas.width !== displayWidth || canvas.height !== displayHeight) {
-        canvas.width = displayWidth
-        canvas.height = displayHeight
+      // 使用与 AudioArray 相同的 Canvas 尺寸
+      if (canvas.width !== 640 || canvas.height !== 200) {
+        canvas.width = 640
+        canvas.height = 200
       }
       drawSpectrogram(audioSpectrum, canvas)
     }
@@ -1331,23 +1327,20 @@ export default function WikiDecoder() {
           </div>
         )}
 
-        {/* 步骤 3：音频频谱图与识别结果 */}
+        {/* 步骤 3：音频频谱图与识别结果（与 AudioArray 相同的样式） */}
         {modelType === 'audio' && audioSpectrum && (
-          <div className="rounded-lg bg-[var(--lab-bg)] p-4 tech-border mb-4">
-            <p className="text-[var(--lab-cyan)] font-bold mb-2 flex items-center gap-2">
-              <span>📊</span> 音频频谱图
+          <div className="rounded-lg bg-[var(--lab-bg)] tech-border mb-4">
+            <p className="text-[var(--lab-cyan)] text-sm font-bold px-4 py-2 border-b border-[var(--lab-border)]">
+              音频频谱（{audioSpectrum.length}帧平均）
             </p>
-            <div className="rounded border-2 border-[var(--lab-cyan)]/30 bg-black overflow-hidden">
-              <canvas
-                ref={spectrogramCanvasRef}
-                width={600}
-                height={256}
-                className="w-full h-auto max-h-64 block"
-                style={{ imageRendering: 'auto' }}
-              />
-            </div>
-            <p className="text-gray-500 text-xs mt-2">
-              X轴：时间（{audioSpectrum.length}帧，每帧约0.1秒，总计约{((audioSpectrum.length * 0.1).toFixed(1))}秒） | Y轴：频率（0-22050Hz，128个频率bin，低频在底部）
+            <canvas
+              ref={spectrogramCanvasRef}
+              width={640}
+              height={200}
+              className="w-full h-48 block"
+            />
+            <p className="text-gray-500 text-xs px-4 py-2">
+              64个频率柱状图 | 显示{audioSpectrum.length}帧的平均频谱（约{((audioSpectrum.length * 0.1).toFixed(1))}秒音频）
             </p>
           </div>
         )}
