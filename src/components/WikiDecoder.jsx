@@ -90,6 +90,14 @@ const SAMPLE_FRUIT_IMAGES = [
   { category: '梨', filename: 'pear_1.jpg', label: '梨 #1' },
   { category: '梨', filename: 'pear_2.jpg', label: '梨 #2' },
 ]
+
+/** 示例鸟类音频列表（与 public/samples/built-in-bird-calls/ 目录结构对应，每个类别选第一个文件） */
+const SAMPLE_BIRD_AUDIOS = [
+  { category: '喜鹊', filename: 'XC42388 - Eurasian Magpie - Pica pica.mp3', label: '喜鹊 #1' },
+  { category: '乌鸦', filename: 'XC166338 - Northern Raven - Corvus corax subcorax.mp3', label: '乌鸦 #1' },
+  { category: '麻雀', filename: 'XC455407 - Eurasian Tree Sparrow - Passer montanus montanus.mp3', label: '麻雀 #1' },
+  { category: '布谷鸟', filename: 'XC317900 - Common Cuckoo - Cuculus canorus.mp3', label: '布谷鸟 #1' },
+]
 function sanitizeAndNormalizeFFT(float32Arr, length = FEATURE_LEN) {
   const out = []
   const clampLo = -100
@@ -240,6 +248,8 @@ export default function WikiDecoder() {
   const [showWikiImagePanel, setShowWikiImagePanel] = useState(false)
   /** 是否显示示例图片选择器 */
   const [showSampleImagePicker, setShowSampleImagePicker] = useState(false)
+  /** 是否显示示例音频选择器 */
+  const [showSampleAudioPicker, setShowSampleAudioPicker] = useState(false)
 
   const videoRef = useRef(null)
   const streamRef = useRef(null)
@@ -596,30 +606,24 @@ export default function WikiDecoder() {
     }
   }, [audioModel, audioClassNames, encyclopedia, applyBirdPrediction])
 
-  const handleUploadAudioRecognize = useCallback(
-    async (e) => {
-      const file = e.target.files?.[0]
-      if (!file) return
+  const recognizeAudio = useCallback(
+    async (audioBuffer) => {
       if (!audioModel || audioClassNames.length === 0 || !encyclopedia) {
         setAudioError('请先加载音频模型和百科全书（可点「使用示例鸟类百科」）')
-        e.target.value = ''
         return
       }
       setAudioError('')
       setAudioUploading(true)
       try {
-        const arr = await file.arrayBuffer()
-        const ctx = new (window.AudioContext || window.webkitAudioContext)()
-        const buf = await ctx.decodeAudioData(arr.slice(0))
-        const n = buf.length
-        const ch = buf.numberOfChannels
+        const n = audioBuffer.length
+        const ch = audioBuffer.numberOfChannels
         const mono = new Float32Array(n)
         for (let i = 0; i < n; i++) {
           let s = 0
-          for (let c = 0; c < ch; c++) s += buf.getChannelData(c)[i]
+          for (let c = 0; c < ch; c++) s += audioBuffer.getChannelData(c)[i]
           mono[i] = s / ch
         }
-        const s441 = resampleTo44100(mono, buf.sampleRate)
+        const s441 = resampleTo44100(mono, audioBuffer.sampleRate)
         const need = FFT_SIZE + (FRAMES_AUDIO - 1) * HOP_SAMPLES
         let feat = extractBirdFeaturesFromPcm(s441)
         if (!feat && s441.length > 0) {
@@ -639,10 +643,55 @@ export default function WikiDecoder() {
         setRagText('')
       } finally {
         setAudioUploading(false)
-        e.target.value = ''
       }
     },
     [audioModel, audioClassNames, encyclopedia, applyBirdPrediction],
+  )
+
+  const handleUploadAudioRecognize = useCallback(
+    async (e) => {
+      const file = e.target.files?.[0]
+      if (!file) return
+      try {
+        const arr = await file.arrayBuffer()
+        const ctx = new (window.AudioContext || window.webkitAudioContext)()
+        const buf = await ctx.decodeAudioData(arr.slice(0))
+        await recognizeAudio(buf)
+      } catch (err) {
+        setAudioError(err?.message || '无法读取音频文件')
+        setPredictions([])
+        setRagText('')
+      } finally {
+        e.target.value = ''
+      }
+    },
+    [recognizeAudio],
+  )
+
+  const handleUseSampleAudio = useCallback(
+    async (sample) => {
+      if (!audioModel || audioClassNames.length === 0) {
+        setAudioError('请先加载音频模型')
+        return
+      }
+      const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
+      const audioUrl = `${base}/samples/built-in-bird-calls/${sample.category}/${sample.filename}`
+      try {
+        const response = await fetch(audioUrl)
+        if (!response.ok) {
+          throw new Error(`无法加载示例音频 (${response.status})`)
+        }
+        const arrayBuffer = await response.arrayBuffer()
+        const ctx = new (window.AudioContext || window.webkitAudioContext)()
+        const audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0))
+        await recognizeAudio(audioBuffer)
+      } catch (err) {
+        setAudioError(err?.message || '加载示例音频失败')
+        setPredictions([])
+        setRagText('')
+      }
+    },
+    [audioModel, audioClassNames, recognizeAudio],
   )
 
   const recognizeImage = useCallback(
@@ -1009,37 +1058,71 @@ export default function WikiDecoder() {
         )}
 
         {modelType === 'audio' && (
-          <div className="mb-4 flex flex-wrap items-stretch gap-3">
-            <div className="flex flex-col gap-1">
-              <input
-                ref={audioFileInputRef}
-                type="file"
-                accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.webm,.flac"
-                className="hidden"
-                onChange={handleUploadAudioRecognize}
-                disabled={!canRecognizeAudio || audioUploading || audioRecording}
-              />
-              <button
-                type="button"
-                onClick={() => audioFileInputRef.current?.click()}
-                disabled={!canRecognizeAudio || audioUploading || audioRecording}
-                className="rounded-xl border-2 border-[var(--lab-cyan)] bg-[var(--lab-cyan)]/10 text-[var(--lab-cyan)] px-5 py-4 font-bold disabled:opacity-50 hover:bg-[var(--lab-cyan)]/20 transition touch-manipulation min-h-[56px]"
-              >
-                {audioUploading ? '识别中…' : '📂 上传声音识别'}
-              </button>
-              <span className="text-gray-500 text-[11px] max-w-[200px]">mp3 / wav / ogg 等，建议 ≥1.3 秒鸟叫片段</span>
+          <div className="space-y-3 mb-4">
+            <div className="flex flex-wrap items-stretch gap-3">
+              <div className="flex flex-col gap-1">
+                <input
+                  ref={audioFileInputRef}
+                  type="file"
+                  accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.webm,.flac"
+                  className="hidden"
+                  onChange={handleUploadAudioRecognize}
+                  disabled={!canRecognizeAudio || audioUploading || audioRecording}
+                />
+                <button
+                  type="button"
+                  onClick={() => audioFileInputRef.current?.click()}
+                  disabled={!canRecognizeAudio || audioUploading || audioRecording}
+                  className="rounded-xl border-2 border-[var(--lab-cyan)] bg-[var(--lab-cyan)]/10 text-[var(--lab-cyan)] px-5 py-4 font-bold disabled:opacity-50 hover:bg-[var(--lab-cyan)]/20 transition touch-manipulation min-h-[56px]"
+                >
+                  {audioUploading ? '识别中…' : '📂 上传声音识别'}
+                </button>
+                <span className="text-gray-500 text-[11px] max-w-[200px]">mp3 / wav / ogg 等，建议 ≥1.3 秒鸟叫片段</span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <button
+                  type="button"
+                  onClick={() => setShowSampleAudioPicker(!showSampleAudioPicker)}
+                  disabled={!canRecognizeAudio || audioUploading || audioRecording}
+                  className="rounded-xl border-2 border-[var(--lab-cyan)] bg-[var(--lab-cyan)]/10 text-[var(--lab-cyan)] px-5 py-4 font-bold disabled:opacity-50 hover:bg-[var(--lab-cyan)]/20 transition touch-manipulation min-h-[56px]"
+                >
+                  {showSampleAudioPicker ? '收起示例' : '🎵 使用示例音频'}
+                </button>
+                <span className="text-gray-500 text-[11px] max-w-[200px]">从 samples/built-in-bird-calls/ 选择</span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <button
+                  type="button"
+                  onClick={handleRecordAndRecognizeBird}
+                  disabled={!canRecognizeAudio || audioRecording || audioUploading}
+                  className="rounded-xl border-2 border-[var(--lab-green)] bg-[var(--lab-green)]/10 text-[var(--lab-green)] px-6 py-4 font-bold disabled:opacity-50 hover:bg-[var(--lab-green)]/20 transition touch-manipulation min-h-[56px]"
+                >
+                  {audioRecording ? '正在录制并识别…' : '🎤 录制并识别鸟叫'}
+                </button>
+                <span className="text-gray-500 text-[11px] max-w-[200px]">约 1 秒对着麦克风播放</span>
+              </div>
             </div>
-            <div className="flex flex-col gap-1">
-              <button
-                type="button"
-                onClick={handleRecordAndRecognizeBird}
-                disabled={!canRecognizeAudio || audioRecording || audioUploading}
-                className="rounded-xl border-2 border-[var(--lab-green)] bg-[var(--lab-green)]/10 text-[var(--lab-green)] px-6 py-4 font-bold disabled:opacity-50 hover:bg-[var(--lab-green)]/20 transition touch-manipulation min-h-[56px]"
-              >
-                {audioRecording ? '正在录制并识别…' : '🎤 录制并识别鸟叫'}
-              </button>
-              <span className="text-gray-500 text-[11px] max-w-[200px]">约 1 秒对着麦克风播放</span>
-            </div>
+            {showSampleAudioPicker && canRecognizeAudio && (
+              <div className="rounded-lg border-2 border-[var(--lab-cyan)]/40 bg-[var(--lab-bg)]/60 p-4">
+                <p className="text-[var(--lab-cyan)] font-bold text-sm mb-2">选择示例音频（来自 samples/built-in-bird-calls/）</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {SAMPLE_BIRD_AUDIOS.map((sample, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleUseSampleAudio(sample)}
+                      disabled={audioUploading || audioRecording}
+                      className="rounded-lg border border-[var(--lab-border)] bg-[var(--lab-panel)]/50 px-3 py-2 text-xs font-medium text-gray-300 hover:border-[var(--lab-cyan)] hover:text-[var(--lab-cyan)] hover:bg-[var(--lab-cyan)]/10 transition touch-manipulation disabled:opacity-50"
+                    >
+                      {sample.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-gray-500 text-[10px] mt-2">
+                  点击任意示例音频将自动加载并识别（需先加载模型与百科全书）
+                </p>
+              </div>
+            )}
           </div>
         )}
 
