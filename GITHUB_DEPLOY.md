@@ -82,6 +82,11 @@ git push -u origin main
 
 4. **改用 SSH**（见上文「用 SSH 推送」），可绕过 HTTPS 缓存问题。
 
+### Actions 仍报 exit code 1？
+
+Annotations 里往往只有摘要。**请点开失败的那次运行 → job `build` → 展开步骤 `Build`（或 `npm ci`）**，查看红色报错全文。  
+常见原因：`npm ci` 与本地 `package-lock.json` 不一致（先本地 `npm install` 再提交 lock）；或构建脚本报错。
+
 ## 三、开启 GitHub Pages
 
 1. 打开 [仓库 Settings → Pages](https://github.com/Freasy9/AI_course/settings/pages)
