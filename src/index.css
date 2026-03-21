@@ -1,13 +1,35 @@
 @import "tailwindcss";
 
-/* AI 实验室主题色 */
+/* 质心教育 · 深空科幻主题 */
 :root {
-  --lab-cyan: #00f5ff;
+  --lab-cyan: #00e8ff;
   --lab-green: #39ff14;
-  --lab-bg: #0a0e14;
-  --lab-panel: #0d1219;
-  --lab-border: rgba(0, 245, 255, 0.35);
-  --lab-glow: rgba(57, 255, 20, 0.4);
+  --lab-accent: #7c3aed;
+  --lab-accent-mid: #a855f7;
+  --lab-accent-glow: rgba(124, 58, 237, 0.42);
+  --lab-bg: #05060a;
+  --lab-panel: #0c1018;
+  --lab-border: rgba(0, 232, 255, 0.22);
+  --lab-border-strong: rgba(0, 232, 255, 0.45);
+  --lab-glow: rgba(57, 255, 20, 0.38);
+}
+
+/* 标题/品牌：Orbitron，正文仍用 JetBrains Mono */
+.font-lab-display {
+  font-family: "Orbitron", "JetBrains Mono", "SF Mono", "Consolas", monospace;
+}
+
+.lab-brand-title {
+  background: linear-gradient(
+    105deg,
+    var(--lab-cyan) 0%,
+    var(--lab-accent-mid) 55%,
+    var(--lab-accent) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 12px rgba(0, 232, 255, 0.35));
 }
 
 * {
@@ -23,15 +45,30 @@ body {
   overflow-x: hidden;
 }
 
-/* 网格背景 */
+/* 网格 + 深空径向光晕 + 斜向细线 */
 .grid-bg {
+  background-color: var(--lab-bg);
   background-image:
-    linear-gradient(rgba(0, 245, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 245, 255, 0.03) 1px, transparent 1px);
-  background-size: 24px 24px;
+    radial-gradient(ellipse 90% 55% at 50% -10%, rgba(0, 232, 255, 0.09), transparent 52%),
+    radial-gradient(ellipse 70% 45% at 100% 100%, rgba(124, 58, 237, 0.06), transparent 50%),
+    linear-gradient(rgba(0, 232, 255, 0.034) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 232, 255, 0.034) 1px, transparent 1px),
+    repeating-linear-gradient(
+      118deg,
+      transparent,
+      transparent 47px,
+      rgba(124, 58, 237, 0.028) 47px,
+      rgba(124, 58, 237, 0.028) 48px
+    );
+  background-size:
+    100% 100%,
+    100% 100%,
+    24px 24px,
+    24px 24px,
+    100% 100%;
 }
 
-/* 扫描线动画 */
+/* 扫描线动画（略带冷色） */
 .scanlines {
   position: fixed;
   inset: 0;
@@ -40,9 +77,10 @@ body {
     0deg,
     transparent,
     transparent 2px,
-    rgba(0, 0, 0, 0.15) 2px,
-    rgba(0, 0, 0, 0.15) 4px
+    rgba(0, 0, 0, 0.14) 2px,
+    rgba(0, 0, 0, 0.14) 4px
   );
+  box-shadow: inset 0 0 80px rgba(124, 58, 237, 0.04);
   z-index: 100;
 }
 
@@ -72,6 +110,14 @@ body {
 .tech-border-green {
   border: 1px solid rgba(57, 255, 20, 0.4);
   box-shadow: 0 0 12px var(--lab-glow);
+}
+
+.tech-border-scifi {
+  border: 1px solid var(--lab-border);
+  box-shadow:
+    0 0 16px rgba(0, 232, 255, 0.12),
+    0 0 28px var(--lab-accent-glow),
+    inset 0 0 14px rgba(0, 232, 255, 0.04);
 }
 
 /* 角标装饰 */

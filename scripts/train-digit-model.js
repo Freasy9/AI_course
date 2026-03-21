@@ -17,10 +17,12 @@ const OUTPUT_FILE = path.join(MODELS_DIR, 'digit-model.json')
 const IMAGES_URL = 'https://storage.googleapis.com/cvdf-datasets/mnist/train-images-idx3-ubyte.gz'
 const LABELS_URL = 'https://storage.googleapis.com/cvdf-datasets/mnist/train-labels-idx1-ubyte.gz'
 
-/** 每类样本数：提高准确率建议 150-200，但训练时间更长（约 30-60 分钟） */
-const MAX_PER_CLASS = 150
+/** 每类样本数：更高准确率需要更多数据，建议 250-300（训练时间 60-90 分钟） */
+const MAX_PER_CLASS = 250
 /** 批量推理，显著快于逐张 */
 const INFER_BATCH = 8
+/** 数据增强：为每张原始图片生成 N 个变体（旋转、缩放、噪声等） */
+const AUGMENT_FACTOR = 2
 
 async function fetchGzip(url) {
   const res = await fetch(url)
@@ -49,6 +51,67 @@ function parseLabels(buf) {
   const labels = []
   for (let i = 0; i < num; i++) labels.push(buf[8 + i])
   return labels
+}
+
+/** 数据增强：为原始图片生成变体（在预处理前应用） */
+async function processImageWithAugmentation(im, tf, augment = false) {
+  const { pixels, rows, cols } = im
+  let t = tf.tensor3d(pixels, [rows, cols, 1])
+  
+  if (augment) {
+    // 随机缩放 0.95-1.05
+    const scale = 0.95 + Math.random() * 0.1
+    const newH = Math.max(1, Math.round(rows * scale))
+    const newW = Math.max(1, Math.round(cols * scale))
+    const scaled = tf.image.resizeBilinear(t, [newH, newW])
+    t.dispose() // 释放原始 tensor
+    
+    let processed = scaled
+    if (newH < rows || newW < cols) {
+      // 需要 padding
+      const cropped = processed.slice([0, 0, 0], [newH, newW, 1])
+      processed.dispose()
+      const padded = tf.pad(cropped, [
+        [0, Math.max(0, rows - newH)],
+        [0, Math.max(0, cols - newW)],
+        [0, 0],
+      ])
+      cropped.dispose()
+      processed = padded
+    } else if (newH > rows || newW > cols) {
+      // 需要裁剪
+      const cropped = processed.slice([0, 0, 0], [rows, cols, 1])
+      processed.dispose()
+      processed = cropped
+    }
+    
+    // 添加轻微噪声
+    const noise = tf.randomNormal(processed.shape, 0, 0.03)
+    const noised = processed.add(noise).clipByValue(0, 1)
+    processed.dispose()
+    noise.dispose()
+    t = noised
+  }
+  
+  // 统一预处理：padding + resize + 对比度增强
+  const padSize = 2
+  const padded = tf.pad(t, [
+    [padSize, padSize],
+    [padSize, padSize],
+    [0, 0],
+  ])
+  t.dispose() // 释放 t，后续不再使用
+  
+  const resized = tf.image.resizeBilinear(padded, [224, 224])
+  padded.dispose()
+  
+  const enhanced = resized.mul(1.3).clipByValue(0, 1)
+  resized.dispose()
+  
+  const rgb = tf.concat([enhanced, enhanced, enhanced], 2)
+  enhanced.dispose()
+  
+  return rgb
 }
 
 async function main() {
@@ -82,27 +145,22 @@ async function main() {
 
   for (let d = 0; d < 10; d++) {
     const list = byDigit[d].slice(0, MAX_PER_CLASS)
-    console.log(`  提取数字 ${d}: ${list.length} 张（批量 ${INFER_BATCH}）`)
-    for (let start = 0; start < list.length; start += INFER_BATCH) {
-      const chunk = list.slice(start, start + INFER_BATCH)
+    console.log(`  提取数字 ${d}: ${list.length} 张（批量 ${INFER_BATCH}，增强 ${AUGMENT_FACTOR}x）`)
+    
+    // 处理原始图片 + 增强变体
+    const allVariants = []
+    for (const im of list) {
+      allVariants.push({ im, augment: false }) // 原始
+      for (let a = 0; a < AUGMENT_FACTOR; a++) {
+        allVariants.push({ im, augment: true }) // 增强变体
+      }
+    }
+    
+    for (let start = 0; start < allVariants.length; start += INFER_BATCH) {
+      const chunk = allVariants.slice(start, start + INFER_BATCH)
       const expanded = []
-      for (const im of chunk) {
-        const { pixels, rows, cols } = im
-        // 改进预处理：先 padding 到 32x32（保持比例），再 resize 到 224x224，减少失真
-        const t = tf.default.tensor3d(pixels, [rows, cols, 1])
-        const padSize = 2
-        const padded = tf.default.pad(t, [
-          [padSize, padSize],
-          [padSize, padSize],
-          [0, 0],
-        ])
-        const resized = tf.default.image.resizeBilinear(padded, [224, 224])
-        // 增强对比度：将 0-1 范围映射到更宽范围，然后归一化
-        const enhanced = resized.mul(1.2).clipByValue(0, 1)
-        const rgb = tf.default.concat([enhanced, enhanced, enhanced], 2)
-        t.dispose()
-        padded.dispose()
-        resized.dispose()
+      for (const { im, augment } of chunk) {
+        const rgb = await processImageWithAugmentation(im, tf.default, augment)
         expanded.push(rgb.expandDims(0))
       }
       const batched = tf.default.concat(expanded, 0)
@@ -129,24 +187,36 @@ async function main() {
   const xs = tf.default.tensor2d(allEmbeddings)
   const ys = tf.default.oneHot(tf.default.tensor1d(allLabels, 'int32'), numClasses)
 
+  // 单层分类头（兼容现有格式），但使用更强的正则化和更多训练
   const headModel = tf.default.sequential({
     layers: [
       tf.default.layers.dense({
         inputShape: [dim],
         units: numClasses,
         activation: 'softmax',
+        kernelRegularizer: tf.default.regularizers.l2({ l2: 0.01 }), // L2 正则化防止过拟合
       }),
     ],
   })
   headModel.compile({
-    optimizer: tf.default.train.adam(0.001),
+    optimizer: tf.default.train.adam(0.0008), // 适中的学习率
     loss: 'categoricalCrossentropy',
+    metrics: ['accuracy'],
   })
   await headModel.fit(xs, ys, {
-    epochs: 40,
-    batchSize: 32,
-    verbose: 0,
-    validationSplit: 0.15, // 15% 用于验证，监控过拟合
+    epochs: 80, // 更多轮数
+    batchSize: 64,
+    verbose: 1,
+    validationSplit: 0.15,
+    callbacks: {
+      onEpochEnd: (epoch, logs) => {
+        if (epoch % 10 === 0 || epoch === 79) {
+          console.log(
+            `  Epoch ${epoch + 1}/80 - loss: ${logs.loss.toFixed(4)}, acc: ${(logs.acc * 100).toFixed(2)}%, val_loss: ${logs.val_loss?.toFixed(4)}, val_acc: ${(logs.val_acc * 100)?.toFixed(2)}%`
+          )
+        }
+      },
+    },
   })
   xs.dispose()
   ys.dispose()

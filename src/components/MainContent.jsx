@@ -4,6 +4,9 @@ import VisionExplorer from './VisionExplorer'
 import WikiDecoder from './WikiDecoder'
 import AudioArray from './AudioArray'
 import GameLab from './GameLab'
+import LlmTemperatureLab from './LlmTemperatureLab'
+import DiffusionImageLab from './DiffusionImageLab'
+import CostarPromptLab from './CostarPromptLab'
 import MagicSpellWorkshopSequential from './MagicSpellWorkshopSequential'
 import ErrorBoundary from './ErrorBoundary'
 
@@ -69,6 +72,21 @@ export default function MainContent({ activeId }) {
         {tab.id === 'audio' && (
           <ErrorBoundary>
             <AudioArray />
+          </ErrorBoundary>
+        )}
+        {tab.id === 'llm' && (
+          <ErrorBoundary>
+            <LlmTemperatureLab />
+          </ErrorBoundary>
+        )}
+        {tab.id === 'costar' && (
+          <ErrorBoundary>
+            <CostarPromptLab />
+          </ErrorBoundary>
+        )}
+        {tab.id === 'diffusion' && (
+          <ErrorBoundary>
+            <DiffusionImageLab />
           </ErrorBoundary>
         )}
         {tab.id === 'game' && (

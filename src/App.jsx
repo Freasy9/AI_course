@@ -6,7 +6,7 @@ import { TabSwitchProvider } from './contexts/TabSwitchContext'
 import './App.css'
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('magic')
+  const [activeTab, setActiveTab] = useState('llm')
 
   const handleTabSelect = useCallback((id) => {
     if (id === activeTab) return
@@ -19,7 +19,7 @@ export default function App() {
       <StatusBar />
       <TabSwitchProvider switchToTab={setActiveTab}>
         <div className="flex-1 flex flex-row min-h-0 overflow-hidden">
-          <aside className="w-52 sm:w-64 md:w-72 flex-shrink-0 border-r-2 border-[var(--lab-border)] bg-[var(--lab-panel)] flex flex-col overflow-hidden shadow-[2px_0_12px_rgba(0,245,255,0.08)]">
+          <aside className="w-52 sm:w-64 md:w-72 flex-shrink-0 border-r-2 border-[var(--lab-border-strong)] bg-[var(--lab-panel)] flex flex-col overflow-hidden shadow-[2px_0_18px_rgba(0,232,255,0.08),0_0_32px_rgba(124,58,237,0.12)]">
             <TabNav activeId={activeTab} onSelect={handleTabSelect} />
           </aside>
           <div className="flex-1 min-h-0 p-3 sm:p-4 overflow-auto">

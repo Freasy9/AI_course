@@ -7,6 +7,7 @@ import {
   generateMagicTextFromCaption,
   generateSpellStageOutput,
 } from '../services/magicSpellService'
+import { consumeMagicSpellSync } from '../utils/magicSpellSync'
 
 function createCostarState() {
   return {
@@ -351,6 +352,7 @@ export default function MagicSpellWorkshopSequential() {
   const [loadingPhase, setLoadingPhase] = useState('')
   const [typedStatus, setTypedStatus] = useState('')
   const [particles, setParticles] = useState([])
+  const [syncBanner, setSyncBanner] = useState('')
 
   const particleTimerRef = useRef(null)
   const typingTimerRef = useRef(null)
@@ -370,6 +372,26 @@ export default function MagicSpellWorkshopSequential() {
     setLoadingPhase('')
     setTypedStatus('')
   }, [activeBranch])
+
+  /** 从 COSTAR 提示词实验室「同步并打开」一次性注入表单（须声明在 activeBranch 重置 effect 之后，避免先写入再被清空） */
+  useEffect(() => {
+    const sync = consumeMagicSpellSync()
+    if (!sync) return
+    const co = sync.costar && typeof sync.costar === 'object' ? sync.costar : {}
+    setActiveBranch('text')
+    setCommonPrompt(sync.commonPrompt || '')
+    setCostar((prev) => ({
+      ...prev,
+      ...Object.fromEntries(
+        COSTAR_FIELDS.map((f) => [f.key, String(co[f.key] ?? prev[f.key] ?? '')]),
+      ),
+    }))
+    setCommonResult(createResultState())
+    setMagicResult(createResultState())
+    setSyncBanner('已从「COSTAR 提示词」同步普通提示词与六维，请先生成普通输出再施放魔法。')
+    const t = window.setTimeout(() => setSyncBanner(''), 8000)
+    return () => window.clearTimeout(t)
+  }, [])
 
   useEffect(() => {
     if (!showMagicStage) return
@@ -584,6 +606,11 @@ export default function MagicSpellWorkshopSequential() {
 
   return (
     <div className="space-y-5">
+      {syncBanner && (
+        <div className="rounded-xl border border-[var(--lab-green)]/50 bg-[rgba(57,255,20,0.08)] px-4 py-3 text-sm text-[var(--lab-green)]">
+          {syncBanner}
+        </div>
+      )}
       <StageCard omitHeader>
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3 mb-4">
           <div>
