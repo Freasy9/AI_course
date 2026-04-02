@@ -1,5 +1,5 @@
 /**
- * COSTAR 实验室 → 魔法咒语工坊：一次性同步普通提示词与 COSTAR（sessionStorage，读取后即清除）
+ * COSTAR 实验室 → COSTAR 创作工坊：一次性同步普通提示词与 COSTAR（sessionStorage，读取后即清除）
  */
 export const MAGIC_SPELL_SYNC_STORAGE_KEY = 'ai-lab-magic-spell-sync-v1'
 

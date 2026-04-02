@@ -15,7 +15,7 @@ import {
 } from '../data/sampleEncyclopedia'
 import { generateSpellStageOutput } from '../services/magicSpellService'
 
-/** 与魔法咒语工坊图片分支相同：走 generateSpellStageOutput({ branch: 'image' }) */
+/** 与 COSTAR 创作工坊图片分支相同：走 generateSpellStageOutput({ branch: 'image' }) */
 function buildWikiDecoderImagePrompt(predictions, ragText, modelType) {
   const top = predictions[0]
   const domain = modelType === 'vision' ? '水果或物体' : '鸟类'
@@ -1469,7 +1469,7 @@ export default function WikiDecoder() {
           <p className="text-gray-400 text-sm mb-4">
             识别已完成，请选择：<strong className="text-gray-300">查看百科全书</strong>展开对应条目，或
             <strong className="text-gray-300"> 生成结果图片</strong>
-            （与魔法咒语工坊图片接口一致，需配置 API）。
+            （与 COSTAR 创作工坊图片接口一致，需配置 API）。
           </p>
           <div className="flex flex-wrap gap-3 mb-4">
             <button

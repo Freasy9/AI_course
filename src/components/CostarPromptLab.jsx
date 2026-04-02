@@ -1,10 +1,10 @@
 /**
  * COSTAR 提示词实验室：与「AI对话实验室」同款条形图，展示「提示完整度」教学演示分（非模型真实 logprob）
- * 可与魔法咒语工坊共用 generateSpellMagicOutput 文本管线（需配置 API，见环境变量）
+ * 可与 COSTAR 创作工坊共用 generateCostarStageOutput 文本管线（需配置 API，见环境变量）
  */
 
 import { useState, useMemo, useCallback } from 'react'
-import { COSTAR_FIELDS, generateSpellMagicOutput } from '../services/magicSpellService'
+import { COSTAR_FIELDS, generateCostarStageOutput } from '../services/magicSpellService'
 import NeonProbabilityBars from './shared/NeonProbabilityBars'
 import { useTabSwitch } from '../contexts/TabSwitchContext'
 import { writeMagicSpellSync } from '../utils/magicSpellSync'
@@ -122,7 +122,7 @@ export default function CostarPromptLab() {
     setGenSource('')
     setGenPrompt('')
     try {
-      const result = await generateSpellMagicOutput({
+      const result = await generateCostarStageOutput({
         branch: 'text',
         commonPrompt,
         costar,
@@ -242,10 +242,10 @@ export default function CostarPromptLab() {
 
       <section className="rounded-lg bg-[var(--lab-bg)] p-4 tech-border border-[var(--lab-cyan)]/30 space-y-4">
         <div>
-          <h3 className="text-[var(--lab-cyan)] font-bold text-sm mb-1">与魔法咒语工坊 · 文本生成联动</h3>
+          <h3 className="text-[var(--lab-cyan)] font-bold text-sm mb-1">与 COSTAR 创作工坊 · 文本生成联动</h3>
           <p className="text-gray-500 text-xs leading-relaxed">
-            下方按钮与「魔法咒语工坊」在选<strong className="text-gray-400">文本</strong>时相同：先根据 COSTAR 生成一句「创作意图」概括，再据此调用文本接口写出正文（详见{' '}
-            <code className="text-[var(--lab-green)]/90">generateSpellMagicOutput</code>）。
+            下方按钮与「COSTAR 创作工坊」在选<strong className="text-gray-400">文本</strong>时相同：先根据 COSTAR 生成一句「创作意图」概括，再据此调用文本接口写出正文（详见{' '}
+            <code className="text-[var(--lab-green)]/90">generateCostarStageOutput</code>）。
             部署时需配置 <code className="text-gray-500">VITE_XAI_API_KEY</code> 等（见项目 <code className="text-gray-500">GITHUB_SECRETS.md</code>），否则可能为本地占位文案。
           </p>
         </div>
@@ -265,7 +265,7 @@ export default function CostarPromptLab() {
               onClick={handleSyncToMagic}
               className="rounded-xl border-2 border-[var(--lab-cyan)] bg-[rgba(0,245,255,0.08)] text-[var(--lab-cyan)] px-5 py-3 font-bold hover:bg-[rgba(0,245,255,0.15)] disabled:opacity-50 transition touch-manipulation"
             >
-              同步到魔法工坊并打开 →
+              同步到创作工坊并打开 →
             </button>
           )}
         </div>
@@ -289,7 +289,7 @@ export default function CostarPromptLab() {
               onClick={() => setShowSpellPrompt((v) => !v)}
               className="w-full flex justify-between items-center px-3 py-2 text-left text-sm text-gray-400 hover:bg-[var(--lab-panel)]"
             >
-              <span>查看拼好的最终咒语（buildMagicSpellPrompt）</span>
+              <span>查看拼好的最终咒语（buildCostarStagePrompt）</span>
               <span className="text-[var(--lab-cyan)]">{showSpellPrompt ? '收起' : '展开'}</span>
             </button>
             {showSpellPrompt && (

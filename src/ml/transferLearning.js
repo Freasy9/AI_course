@@ -5,6 +5,7 @@
 
 import * as tf from '@tensorflow/tfjs'
 import * as mobilenet from '@tensorflow-models/mobilenet'
+import { canvasToDigitInputTensor, drawImageCover } from './digitPreprocess'
 
 let mobilenetModel = null
 let headModel = null
@@ -171,6 +172,52 @@ export async function predict(imageSrc, headWeights) {
   }))
   results.sort((a, b) => b.probability - a.probability)
   return { predictions: results, embedding: embeddingArray }
+}
+
+/**
+ * 手写数字专用：与 train-digit-model 一致的 MNIST 风格预处理 + MobileNet 0–255 输入
+ * @param {HTMLCanvasElement} canvas — 已绘好画面（建议 224×224，黑底 cover）
+ */
+export async function predictDigitFromCanvas(canvas, headWeights) {
+  const net = await loadMobileNet()
+  const pre = canvasToDigitInputTensor(canvas)
+  const scaled = tf.mul(pre, 255)
+  pre.dispose()
+  const emb = net.infer(scaled, true)
+  scaled.dispose()
+  const embedding = emb.reshape([1, -1])
+  const embeddingData = await emb.data()
+  const embeddingArray = Array.from(embeddingData)
+
+  const logits = tf.tensor2d(headWeights.weights)
+  const bias = tf.tensor1d(headWeights.biases)
+  const out = tf.softmax(tf.add(tf.matMul(embedding, logits), bias))
+  const probs = await out.data()
+  emb.dispose()
+  embedding.dispose()
+  logits.dispose()
+  bias.dispose()
+  out.dispose()
+
+  const results = headWeights.classNames.map((name, i) => ({
+    className: name,
+    probability: probs[i],
+  }))
+  results.sort((a, b) => b.probability - a.probability)
+  return { predictions: results, embedding: embeddingArray }
+}
+
+/** 从 dataURL / 路径 预测（内部先画到 canvas） */
+export async function predictDigit(imageSrc, headWeights) {
+  const img = await loadImageAsElement(imageSrc)
+  const canvas = document.createElement('canvas')
+  canvas.width = 224
+  canvas.height = 224
+  const ctx = canvas.getContext('2d')
+  ctx.fillStyle = '#000000'
+  ctx.fillRect(0, 0, 224, 224)
+  drawImageCover(ctx, img, 224, 224)
+  return predictDigitFromCanvas(canvas, headWeights)
 }
 
 export function disposeModels() {

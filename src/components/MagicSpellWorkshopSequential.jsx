@@ -58,14 +58,14 @@ const BRANCHES = [
     label: '文本生成',
     icon: '✍️',
     sub: 'Story / Text',
-    description: '先生成普通文本，再输入魔法咒语并施放。',
+    description: '先生成普通文本，再输入进阶咒语并生成。',
   },
   {
     id: 'image',
     label: '图片生成',
     icon: '🖼️',
     sub: 'Image / Vision',
-    description: '先生成普通图片，再输入魔法咒语并施放。',
+    description: '先生成普通图片，再输入进阶咒语并生成。',
   },
 ]
 
@@ -173,8 +173,8 @@ function StageCard({ step, title, hint, children, omitHeader }) {
 function MagicCaptionBlock({ text, mode = 'image' }) {
   const label =
     mode === 'text'
-      ? '魔法文本意图（大模型根据 COSTAR 与普通提示词生成）'
-      : '魔法画面描述（大模型根据 COSTAR 与普通提示词生成）'
+      ? '进阶文本意图（大模型根据 COSTAR 与普通提示词生成）'
+      : '进阶画面描述（大模型根据 COSTAR 与普通提示词生成）'
   return (
     <div className="rounded-xl border border-[var(--lab-cyan)]/45 bg-[rgba(0,245,255,0.06)] px-4 py-4">
       <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--lab-cyan)] mb-2">{label}</p>
@@ -203,7 +203,7 @@ function OutputCard({
         <div className="rounded-xl border border-[var(--lab-border)] bg-black/25 p-8 min-h-[200px] flex flex-col items-center justify-center gap-4">
           <div className="h-10 w-10 rounded-full border-2 border-[var(--lab-cyan)] border-t-transparent animate-spin" />
           <p className="text-[var(--lab-cyan)] text-sm text-center max-w-md">
-            正在根据魔法指令（COSTAR）与普通提示词，组合生成一句完整的画面描述…
+            正在根据 COSTAR 指令与普通提示词，组合生成一句完整的画面描述…
           </p>
         </div>
       )
@@ -227,7 +227,7 @@ function OutputCard({
         <div className="rounded-xl border border-[var(--lab-border)] bg-black/25 p-8 min-h-[200px] flex flex-col items-center justify-center gap-4">
           <div className="h-10 w-10 rounded-full border-2 border-[var(--lab-cyan)] border-t-transparent animate-spin" />
           <p className="text-[var(--lab-cyan)] text-sm text-center max-w-md">
-            正在根据魔法指令（COSTAR）与普通提示词，组合生成一句完整的文本创作意图…
+            正在根据 COSTAR 指令与普通提示词，组合生成一句完整的文本创作意图…
           </p>
         </div>
       )
@@ -272,7 +272,7 @@ function OutputCard({
           {result.imageUrl ? (
             <img
               src={result.imageUrl}
-              alt="魔法生成图像"
+              alt="进阶阶段生成图像"
               className="block w-full h-[320px] object-cover"
               referrerPolicy="no-referrer"
             />
@@ -388,7 +388,7 @@ export default function MagicSpellWorkshopSequential() {
     }))
     setCommonResult(createResultState())
     setMagicResult(createResultState())
-    setSyncBanner('已从「COSTAR 提示词」同步普通提示词与六维，请先生成普通输出再施放魔法。')
+    setSyncBanner('已从「COSTAR 提示词」同步普通提示词与六维，请先生成普通输出再执行进阶生成。')
     const t = window.setTimeout(() => setSyncBanner(''), 8000)
     return () => window.clearTimeout(t)
   }, [])
@@ -500,7 +500,7 @@ export default function MagicSpellWorkshopSequential() {
 
     if (activeBranch === 'image') {
       let caption = ''
-      setLoadingPhase('正在生成魔法画面描述...')
+      setLoadingPhase('正在生成进阶画面描述...')
       setMagicResult({
         ...createResultState(),
         state: 'loading',
@@ -540,7 +540,7 @@ export default function MagicSpellWorkshopSequential() {
           text: caption,
           imageUrl: '',
           source: 'local',
-          error: error?.message || '魔法图像失败',
+          error: error?.message || '进阶图像生成失败',
           loadPhase: null,
         })
       } finally {
@@ -550,7 +550,7 @@ export default function MagicSpellWorkshopSequential() {
     }
 
     let textCaption = ''
-    setLoadingPhase('正在生成魔法文本意图...')
+    setLoadingPhase('正在生成进阶文本意图...')
     setMagicResult({
       ...createResultState(),
       state: 'loading',
@@ -591,7 +591,7 @@ export default function MagicSpellWorkshopSequential() {
         text: '',
         imageUrl: '',
         source: 'local',
-        error: error?.message || '魔法输出失败',
+        error: error?.message || '进阶输出失败',
         loadPhase: null,
         magicPreviewSentence: textCaption,
       })
@@ -602,7 +602,7 @@ export default function MagicSpellWorkshopSequential() {
 
   const topStatus = loadingPhase ? typedStatus || loadingPhase : '等待开始'
   const commonButtonLabel = activeBranch === 'image' ? '生成普通图像' : '生成普通文本'
-  const magicButtonLabel = activeBranch === 'image' ? '施放图像魔法' : '施放文本魔法'
+  const magicButtonLabel = activeBranch === 'image' ? '生成进阶图像' : '生成进阶文本'
 
   return (
     <div className="space-y-5">
@@ -614,8 +614,8 @@ export default function MagicSpellWorkshopSequential() {
       <StageCard omitHeader>
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3 mb-4">
           <div>
-            <h4 className="text-[var(--lab-cyan)] font-bold text-lg">魔法咒语工坊</h4>
-            <p className="text-gray-400 text-sm mt-1">先选择文本或图片，再依次完成普通咒语与魔法咒语流程。</p>
+            <h4 className="text-[var(--lab-cyan)] font-bold text-lg">COSTAR 创作工坊</h4>
+            <p className="text-gray-400 text-sm mt-1">先选择文本或图片，再依次完成普通咒语与进阶咒语流程。</p>
           </div>
           <div className="text-right">
             <p className="text-[11px] uppercase tracking-[0.35em] text-gray-500">Status</p>
@@ -638,7 +638,7 @@ export default function MagicSpellWorkshopSequential() {
 
       <StageCard
         title="普通提示词"
-        hint="先输入普通咒语，生成普通输出后，下一步才会出现魔法咒语输入栏。"
+        hint="先输入普通咒语，生成普通输出后，下一步才会出现进阶咒语输入栏。"
       >
         <div className="grid gap-4">
           <textarea
@@ -680,7 +680,7 @@ export default function MagicSpellWorkshopSequential() {
           <OutputCard
             branch={activeBranch}
             result={commonResult}
-            imageDownloadBase="魔法工坊-普通输出"
+            imageDownloadBase="创作工坊-普通输出"
           />
         </div>
       </StageCard>
@@ -688,8 +688,8 @@ export default function MagicSpellWorkshopSequential() {
       {showMagicStage && (
         <StageCard
           step="第三步"
-          title="魔法咒语（COSTAR）"
-          hint="按 COSTAR 六维填写（均可留空）；会与上方「普通提示词」一起拼装为最终咒语后施放。"
+          title="进阶咒语（COSTAR）"
+          hint="按 COSTAR 六维填写（均可留空）；会与上方「普通提示词」一起拼装为最终咒语后用于进阶生成。"
         >
           <div className="grid gap-4">
             <div className="rounded-xl border border-[rgba(57,255,20,0.35)] bg-[#071019]/80 p-4 space-y-3">
@@ -741,13 +741,13 @@ export default function MagicSpellWorkshopSequential() {
       {showMagicStage && (
         <StageCard
           step="第四步"
-          title="魔法输出"
-          hint="施放魔法后：先展示大模型根据 COSTAR 与普通提示词生成的一句概括（画面描述或文本意图），再展示据此生成的图像或故事正文。"
+          title="进阶输出"
+          hint="进阶生成后：先展示大模型根据 COSTAR 与普通提示词生成的一句概括（画面描述或文本意图），再展示据此生成的图像或故事正文。"
         >
           <OutputCard
             branch={activeBranch}
             result={magicResult}
-            imageDownloadBase="魔法工坊-魔法输出"
+            imageDownloadBase="创作工坊-进阶输出"
             magicSequentialOutput
           />
         </StageCard>

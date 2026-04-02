@@ -4,7 +4,14 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { trainHead, predict, disposeModels } from '../ml/transferLearning'
+import {
+  trainHead,
+  predict,
+  predictDigit,
+  predictDigitFromCanvas,
+  disposeModels,
+} from '../ml/transferLearning'
+import { drawVideoCoverToCanvas, isDigitHeadModel } from '../ml/digitPreprocess'
 import { useVisionModelOptional } from '../contexts/VisionModelContext'
 
 const STEPS = [
@@ -63,6 +70,8 @@ export default function VisionExplorer() {
   const captureCanvasRef = useRef(null)
   const predictIntervalRef = useRef(null)
   const importInputRef = useRef(null)
+  /** 数字模型：对连续帧概率做指数平滑，减少抖动 */
+  const digitPredSmoothRef = useRef(null)
 
   const needCamera = step === 2 || (step === 4 && recognitionOn)
 
@@ -218,7 +227,10 @@ export default function VisionExplorer() {
       })
       setRecognizing(true)
       try {
-        const result = await predict(dataUrl, headWeights)
+        digitPredSmoothRef.current = null
+        const result = isDigitHeadModel(headWeights)
+          ? await predictDigit(dataUrl, headWeights)
+          : await predict(dataUrl, headWeights)
         setPredictions(result.predictions)
       } catch (_) {
         setPredictions([])
@@ -239,6 +251,7 @@ export default function VisionExplorer() {
     canvas.height = 224
     const ctx = canvas.getContext('2d')
     let cancelled = false
+    const isDigit = isDigitHeadModel(headWeights)
     const run = async () => {
       if (cancelled || !video) {
         if (!cancelled) predictIntervalRef.current = setTimeout(run, 200)
@@ -251,10 +264,31 @@ export default function VisionExplorer() {
       }
       try {
         if (!cancelled) setRecognizing(true)
-        ctx.drawImage(video, 0, 0, 224, 224)
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
-        const result = await predict(dataUrl, headWeights)
-        if (!cancelled) setPredictions(result.predictions)
+        let predictions
+        if (isDigit) {
+          drawVideoCoverToCanvas(video, canvas, 224)
+          const result = await predictDigitFromCanvas(canvas, headWeights)
+          let next = result.predictions
+          const prev = digitPredSmoothRef.current
+          if (prev && prev.length === next.length) {
+            const a = 0.62
+            const map = new Map(prev.map((p) => [p.className, p.probability]))
+            next = next.map((p) => ({
+              ...p,
+              probability: a * p.probability + (1 - a) * (map.get(p.className) ?? p.probability),
+            }))
+            next.sort((x, y) => y.probability - x.probability)
+          }
+          digitPredSmoothRef.current = next
+          predictions = next
+        } else {
+          digitPredSmoothRef.current = null
+          ctx.drawImage(video, 0, 0, 224, 224)
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
+          const result = await predict(dataUrl, headWeights)
+          predictions = result.predictions
+        }
+        if (!cancelled) setPredictions(predictions)
       } catch (_) {}
       finally {
         if (!cancelled) setRecognizing(false)
@@ -264,6 +298,7 @@ export default function VisionExplorer() {
     run()
     return () => {
       cancelled = true
+      digitPredSmoothRef.current = null
       if (predictIntervalRef.current) clearTimeout(predictIntervalRef.current)
     }
   }, [step, recognitionOn, headWeights])
@@ -736,7 +771,7 @@ function Step4Predictor({
     )
   }
 
-  const isDigitModel = headWeights?.classNames?.length === 10 && headWeights.classNames.every((n, i) => n === String(i))
+  const isDigitModel = isDigitHeadModel(headWeights)
 
   return (
     <div className="tech-border rounded-lg p-6 bg-[var(--lab-panel)]/80 max-w-xl space-y-6">

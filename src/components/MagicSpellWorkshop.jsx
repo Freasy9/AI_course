@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   COSTAR_FIELDS,
-  buildMagicSpellPrompt,
+  buildCostarStagePrompt,
   generateImageSpellComparison,
   generateTextSpellComparison,
 } from '../services/magicSpellService'
@@ -61,7 +61,7 @@ const BRANCHES = [
     sub: 'Story / Text',
     resultTitle: '文本生成',
     resultIcon: '📜',
-    description: '将普通咒语与魔法咒语转成故事/文本结果，并对比展示。',
+    description: '将普通咒语与进阶咒语转成故事/文本结果，并对比展示。',
     kind: 'story',
   },
   {
@@ -71,7 +71,7 @@ const BRANCHES = [
     sub: 'Image / Vision',
     resultTitle: '图片生成',
     resultIcon: '🎨',
-    description: '将普通咒语与魔法咒语转成幻境图像结果，并对比展示。',
+    description: '将普通咒语与进阶咒语转成图像结果，并对比展示。',
     kind: 'image',
   },
 ]
@@ -125,7 +125,7 @@ function ResultWindow({ title, icon, entry, kind }) {
                   ? '等待接口响应'
                   : isReady
                     ? '接口返回结果'
-                    : '等待施放'}
+                    : '等待生成'}
           </p>
         </div>
         <span className="text-[10px] uppercase tracking-[0.3em] px-2 py-1 rounded-full border border-[var(--lab-border)] text-gray-400">
@@ -203,7 +203,7 @@ export default function MagicSpellWorkshop() {
   )
 
   const finalMagicSpell = useMemo(
-    () => buildMagicSpellPrompt(commonPrompt, costar),
+    () => buildCostarStagePrompt(commonPrompt, costar),
     [
       commonPrompt,
       costar.context,
@@ -328,7 +328,7 @@ export default function MagicSpellWorkshop() {
 
   const hasSpell = Boolean(commonPrompt.trim() || finalMagicSpell.trim())
   const branchKindLabel = activeBranchConfig.kind === 'story' ? 'story' : 'image'
-  const castLabel = activeBranch === 'text' ? '施放文本魔法' : '施放图像魔法'
+  const castLabel = activeBranch === 'text' ? '生成进阶文本' : '生成进阶图像'
   const parserLabel = activeBranch === 'text' ? '文本解析器' : '图像解析器'
 
   return (
@@ -336,14 +336,14 @@ export default function MagicSpellWorkshop() {
       <section className="tech-border rounded-xl p-4 sm:p-5 bg-[var(--lab-panel)]/60 relative overflow-hidden">
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3 mb-4">
           <div>
-            <h3 className="text-[var(--lab-cyan)] font-bold text-lg sm:text-xl">魔法核心输入</h3>
+            <h3 className="text-[var(--lab-cyan)] font-bold text-lg sm:text-xl">COSTAR 核心输入</h3>
             <p className="text-gray-400 text-sm mt-1">{activeBranchConfig.description}</p>
           </div>
           <div className="flex items-center gap-3">
             <div className="text-right">
               <p className="text-[11px] uppercase tracking-[0.35em] text-gray-500">{parserLabel}</p>
               <p className={`text-sm font-mono ${parseBanner ? 'text-[var(--lab-green)]' : 'text-gray-400'}`}>
-                {parseBanner ? typedStatus || '正在解析咒语...' : '等待施放'}
+                {parseBanner ? typedStatus || '正在解析提示词...' : '等待生成'}
               </p>
             </div>
             <div className="relative inline-flex">
@@ -425,7 +425,7 @@ export default function MagicSpellWorkshop() {
           <div className="tech-border rounded-xl p-4 bg-[var(--lab-bg)]/70 h-full flex flex-col">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h4 className="text-[var(--lab-cyan)] font-bold text-sm">COSTAR 魔法器</h4>
+                <h4 className="text-[var(--lab-cyan)] font-bold text-sm">COSTAR 六维</h4>
                 <p className="text-[11px] text-gray-500 mt-1">六维提示实时拼装 Final Magic Spell</p>
               </div>
               <span className="text-[10px] uppercase tracking-[0.3em] text-gray-500">COSTAR</span>
@@ -452,7 +452,7 @@ export default function MagicSpellWorkshop() {
               {activeBranchConfig.resultIcon} {activeBranchConfig.resultTitle}
             </h3>
             <p className="text-gray-500 text-sm mt-1">
-              当前只展示 {activeBranchConfig.label} 分支，仍然对比普通咒语和魔法咒语的结果。
+              当前只展示 {activeBranchConfig.label} 分支，仍然对比普通咒语和进阶咒语的结果。
             </p>
           </div>
           <span className="text-[10px] uppercase tracking-[0.3em] text-gray-500">{branchKindLabel}</span>
@@ -465,7 +465,7 @@ export default function MagicSpellWorkshop() {
             kind={activeBranchConfig.kind}
           />
           <ResultWindow
-            title="魔法咒语"
+            title="进阶咒语（COSTAR）"
             icon="✨"
             entry={activeComparison.magic}
             kind={activeBranchConfig.kind}

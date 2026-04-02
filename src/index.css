@@ -254,7 +254,7 @@ body {
   animation: jump-detected 0.8s ease-out forwards;
 }
 
-/* 魔法咒语：粒子散开与打字机光标 */
+/* COSTAR 创作工坊：粒子散开与打字机光标 */
 @keyframes spell-burst {
   0% {
     transform: translate(0, 0) scale(1);

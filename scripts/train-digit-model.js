@@ -166,10 +166,13 @@ async function main() {
       const batched = tf.default.concat(expanded, 0)
       expanded.forEach((x) => x.dispose())
 
-      const emb = net.infer(batched, true)
+      // MobileNet infer 期望与 fromPixels 一致：像素约 0–255（inputRange [0,1] 时内部会 /255）
+      const scaled = batched.mul(255)
+      batched.dispose()
+      const emb = net.infer(scaled, true)
+      scaled.dispose()
       const b = emb.shape[0]
       const embData = await emb.data()
-      batched.dispose()
       emb.dispose()
 
       for (let i = 0; i < b; i++) {

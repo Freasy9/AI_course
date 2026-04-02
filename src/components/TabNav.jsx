@@ -2,7 +2,7 @@ const TABS = [
   { id: 'llm', label: 'AI对话实验室', icon: '💬', sub: 'Temperature · Next-token' },
   { id: 'costar', label: 'COSTAR提示词', icon: '✳️', sub: '对齐度 · 条形图' },
   { id: 'diffusion', label: '扩散图像实验室', icon: '🖼️', sub: '去噪 · 迷雾散去' },
-  { id: 'magic', label: '魔法咒语工坊', icon: '🪄', sub: 'COSTAR Spell Forge' },
+  { id: 'magic', label: 'COSTAR 创作工坊', icon: '🪄', sub: 'COSTAR Workshop' },
   { id: 'wiki', label: '百科解码器', icon: '📖', sub: 'Wiki Decoder (RAG)' },
   { id: 'vision', label: '视觉探测器', icon: '📷', sub: 'Vision Explorer' },
   { id: 'audio', label: '频率监听阵列', icon: '🎤', sub: 'Audio Array' },

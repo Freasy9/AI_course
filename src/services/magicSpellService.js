@@ -305,9 +305,9 @@ async function postJsonToUrl(url, body, headers = {}) {
 }
 
 function createLocalStoryFallback({ kind, variant, prompt, commonPrompt, finalSpell, costar }) {
-  const variantTitle = variant === 'magic' ? '魔法咒语' : '普通咒语'
+  const variantTitle = variant === 'magic' ? '进阶咒语' : '普通咒语'
   const segments = [
-    `【${kind === 'story' ? '故事' : '幻境作图'} · ${variantTitle} · 本地回退】`,
+    `【${kind === 'story' ? '故事' : '图像'} · ${variantTitle} · 本地回退】`,
     `Prompt: ${truncateText(prompt || commonPrompt || finalSpell || '未提供内容', 180)}`,
   ].filter(Boolean)
 
@@ -383,9 +383,9 @@ function summarizeCostar(costar) {
 
 function buildStoryGenerationPrompt({ variant, prompt, commonPrompt, finalSpell, costar }) {
   const activePrompt = cleanText(prompt || (variant === 'magic' ? finalSpell : commonPrompt))
-  const variantLabel = variant === 'magic' ? '魔法咒语' : '普通咒语'
+  const variantLabel = variant === 'magic' ? '进阶咒语' : '普通咒语'
   return [
-    `你是“魔法咒语工坊”的故事生成引擎。请把输入转化为一段适合展示的中文故事。`,
+    `你是「COSTAR 创作工坊」的故事生成引擎。请把输入转化为一段适合展示的中文故事。`,
     `模式：${variantLabel}`,
     `输入咒语：${activePrompt || '未提供'}`,
     '',
@@ -429,9 +429,9 @@ function buildImageGenerationPrompt({ variant, prompt, commonPrompt, finalSpell,
     : cleanText(prompt)
 
   return [
-    'Create a single cinematic illustration.',
-    `Subject: ${visualSubject || 'a small dog in a luminous neon fantasy scene'}`,
-    'Visual mood: neon, magical, polished, cinematic, high contrast.',
+    'Create a single clear illustration.',
+    `Subject: ${visualSubject || 'a simple scene with one clear focal subject'}`,
+    'Visual mood: natural lighting, balanced colors, clean composition; follow the subject without adding extra genre.',
     'Composition: centered subject, clean background, strong depth, 16:9.',
     'Important: do not render any text, letters, words, numbers, captions, labels, subtitles, watermarks, logos, UI, or callout boxes.',
   ].join('\n')
@@ -441,8 +441,8 @@ function buildPlainImagePrompt({ prompt }) {
   const visualSubject = cleanText(prompt)
   return [
     'Create a single clean high-detail illustration.',
-    `Subject: ${visualSubject || 'a small dog in a simple scene'}`,
-    'Composition: centered subject, polished background, 16:9.',
+    `Subject: ${visualSubject || 'a simple scene with a clear focal subject'}`,
+    'Composition: centered subject, clear background, 16:9.',
     'Important: do not render any text, letters, words, numbers, captions, labels, subtitles, watermarks, logos, UI, or callout boxes.',
   ].join('\n')
 }
@@ -603,11 +603,11 @@ async function generateVariant({
   }
 }
 
-export function buildMagicSpellPrompt(commonPrompt, costar) {
+export function buildCostarStagePrompt(commonPrompt, costar) {
   const prompt = cleanText(commonPrompt)
   const safeCostar = costar || {}
   const lines = [
-    '你正在运行“魔法咒语工坊”的 COSTAR 引擎。请严格遵循以下六维提示并生成高质量结果：',
+    '你正在运行「COSTAR 创作工坊」的 COSTAR 引擎。请严格遵循以下六维提示并生成高质量结果：',
     '',
     `Common Prompt: ${prompt || '未填写，请根据 COSTAR 自动补全'}`,
   ]
@@ -630,13 +630,13 @@ function buildMagicCaptionUserContent(commonPrompt, safeCostar) {
   const lines = [
     `【普通提示词】${cp || '（未填写）'}`,
     '',
-    '【COSTAR 魔法六维】',
+    '【COSTAR 六维】',
     ...COSTAR_FIELDS.map(
       (f) =>
         `${f.label}：${cleanText(safeCostar[f.key]) || '（未填写）'}`,
     ),
     '',
-    '任务：将以上**所有已填写或有意义的信息**融成**唯一一句**完整、流畅的中文，描述施放魔法后这幅图像应当呈现的画面（主体、环境、氛围、风格倾向）。',
+    '任务：将以上**所有已填写或有意义的信息**融成**唯一一句**完整、流畅的中文，描述**最终要生成的这幅图像**应当呈现的画面（主体、环境、氛围、风格倾向）。不要预设奇幻题材，除非用户或 COSTAR 中明确写出。',
     '要求：只输出这一句正文；不要引号、书名号、序号、前缀说明。',
   ]
   return lines.join('\n')
@@ -648,7 +648,7 @@ function localFallbackMagicCaption(commonPrompt, safeCostar) {
   const merged = [cp, ...bits].filter(Boolean).join('，')
   return merged
     ? `画面构想为：${merged}。`
-    : '一幅融合魔法氛围、细节丰富、光影鲜明的奇幻场景插图。'
+    : '一幅主体明确、细节清楚、光影自然的插图。'
 }
 
 function stripOneSentenceQuotes(text) {
@@ -675,7 +675,7 @@ export async function generateMagicImageCaptionSentence({ commonPrompt, costar }
             {
               role: 'system',
               content:
-                '你是图像画面描述撰稿人。用户会给出普通提示词与 COSTAR 六维。你只输出一句通顺的中文，概括最终要画的图，不要其它字。',
+                '你是图像画面描述撰稿人。用户会给出普通提示词与 COSTAR 六维。你只输出一句通顺的中文，概括最终要画的图；不要预设奇幻风格，除非输入里已有。不要其它字。',
             },
             {
               role: 'user',
@@ -701,24 +701,24 @@ export async function generateMagicImageCaptionSentence({ commonPrompt, costar }
 }
 
 function buildImagePromptFromMagicCaption(captionZh) {
-  const c = cleanText(captionZh) || 'a vivid magical fantasy scene'
+  const c = cleanText(captionZh) || 'a clear scene with a single main subject'
   return [
-    'Create one high-detail cinematic fantasy illustration.',
+    'Create one high-detail illustration.',
     'Interpret this Chinese scene description visually (subject, mood, lighting, style):',
     c,
-    'Composition: strong focal subject, magical atmosphere, polished, 16:9 feel.',
+    'Composition: clear focal subject, balanced lighting, polished, 16:9 feel.',
     'Critical: no text, letters, numbers, captions, watermarks, logos, or UI in the image.',
   ].join('\n')
 }
 
 /**
- * 根据模型生成的那句画面描述出图（失败时回退到原魔法拼图解图）。
+ * 根据模型生成的那句画面描述出图（失败时回退到进阶阶段拼图解图）。
  */
 export async function generateMagicImageFromCaption({ caption, commonPrompt, costar }) {
   const cp = cleanText(commonPrompt)
   const safeCostar = costar || {}
   const c = cleanText(caption) || localFallbackMagicCaption(cp, safeCostar)
-  const finalSpell = buildMagicSpellPrompt(cp, safeCostar)
+  const finalSpell = buildCostarStagePrompt(cp, safeCostar)
   const config = resolveConfig()
 
   try {
@@ -772,12 +772,12 @@ function buildMagicTextIntentUserContent(commonPrompt, safeCostar) {
   const lines = [
     `【普通提示词】${cp || '（未填写）'}`,
     '',
-    '【COSTAR 魔法六维】',
+    '【COSTAR 六维】',
     ...COSTAR_FIELDS.map(
       (f) => `${f.label}：${cleanText(safeCostar[f.key]) || '（未填写）'}`,
     ),
     '',
-    '任务：将以上**所有已填写或有意义的信息**融成**唯一一句**完整、流畅的中文，概括施放魔法后这段文本应当写成什么样（主题、基调、风格、读者感受与结构倾向，不写具体情节细节）。',
+    '任务：将以上**所有已填写或有意义的信息**融成**唯一一句**完整、流畅的中文，概括**进入进阶阶段后**这段文本应当写成什么样（主题、基调、风格、读者感受与结构倾向，不写具体情节细节）。',
     '要求：只输出这一句正文；不要引号、书名号、序号、前缀说明。',
   ]
   return lines.join('\n')
@@ -793,7 +793,7 @@ function localFallbackMagicTextIntent(commonPrompt, safeCostar) {
 }
 
 /**
- * 文本魔法：根据 COSTAR + 普通提示词生成一句「创作意图」概括。
+ * 文本进阶阶段：根据 COSTAR + 普通提示词生成一句「创作意图」概括。
  */
 export async function generateMagicTextCaptionSentence({ commonPrompt, costar }) {
   const cp = cleanText(commonPrompt)
@@ -837,7 +837,7 @@ export async function generateMagicTextCaptionSentence({ commonPrompt, costar })
 function buildMagicStoryFromIntentUserContent(intentLine, cp, safeCostar) {
   const c = cleanText(intentLine)
   return [
-    '【魔法创作意图（已概括为一句，请作为总纲）】',
+    '【进阶创作意图（已概括为一句，请作为总纲）】',
     c || '（未提供）',
     '',
     `【普通提示词】${cp || '未填写'}`,
@@ -845,7 +845,7 @@ function buildMagicStoryFromIntentUserContent(intentLine, cp, safeCostar) {
     '【COSTAR 参考】',
     summarizeCostar(safeCostar),
     '',
-    '任务：严格依据上面的「魔法创作意图」为核心，融合普通提示词与 COSTAR，写一段适合展示的中文故事。',
+    '任务：严格依据上面的「进阶创作意图」为核心，融合普通提示词与 COSTAR，写一段适合展示的中文故事。',
     '输出要求：',
     '1. 只输出故事正文，不要解释、不要标题。',
     '2. 使用中文，分成 3 个短段落。',
@@ -854,13 +854,13 @@ function buildMagicStoryFromIntentUserContent(intentLine, cp, safeCostar) {
 }
 
 /**
- * 根据意图句生成完整魔法文本正文（失败时回退原魔法故事管线）。
+ * 根据意图句生成完整进阶阶段文本正文（失败时回退原故事管线）。
  */
 export async function generateMagicTextFromCaption({ caption, commonPrompt, costar }) {
   const cp = cleanText(commonPrompt)
   const safeCostar = costar || {}
   const intent = cleanText(caption) || localFallbackMagicTextIntent(cp, safeCostar)
-  const finalSpell = buildMagicSpellPrompt(cp, safeCostar)
+  const finalSpell = buildCostarStagePrompt(cp, safeCostar)
   const config = resolveConfig()
 
   try {
@@ -938,12 +938,12 @@ export async function generateMagicTextFromCaption({ caption, commonPrompt, cost
 }
 
 /**
- * 顺序工坊「施放魔法」：基于普通提示词 + COSTAR 六维，走与对比模式相同的魔法生成管线。
+ * 顺序工坊进阶阶段：基于普通提示词 + COSTAR 六维，走与对比模式相同的生成管线。
  */
-export async function generateSpellMagicOutput({ branch, commonPrompt, costar }) {
+export async function generateCostarStageOutput({ branch, commonPrompt, costar }) {
   const cp = cleanText(commonPrompt)
   const safeCostar = costar || {}
-  const finalSpell = buildMagicSpellPrompt(cp, safeCostar)
+  const finalSpell = buildCostarStagePrompt(cp, safeCostar)
 
   if (branch === 'image') {
     const caption = await generateMagicImageCaptionSentence({ commonPrompt: cp, costar: safeCostar })
@@ -1055,8 +1055,8 @@ function buildStageImagePrompt(prompt, branchLabel) {
   const activePrompt = cleanText(prompt)
   return [
     `Create a single high-detail image for ${branchLabel}.`,
-    `Subject: ${activePrompt || 'a charming small dog in a neon fantasy scene'}`,
-    'Style: cinematic, polished, vibrant, magical, clean composition.',
+    `Subject: ${activePrompt || 'a simple scene with a clear focal subject'}`,
+    'Style: clear composition, natural or neutral lighting; follow the subject only, no extra genre unless specified.',
     'Important: do not render any text, letters, numbers, captions, labels, subtitles, watermarks, logos, or UI.',
   ].join('\n')
 }
